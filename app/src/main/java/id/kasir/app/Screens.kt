@@ -3,17 +3,22 @@ package id.kasir.app
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,7 +38,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -60,6 +64,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -167,12 +172,34 @@ fun ReceiptDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) 
 
 // ---------- Tab Jajan ----------
 
+// Warna petak "foto" menu: dipilih stabil dari nama menu, supaya tiap menu
+// selalu tampil dengan warna yang sama (gaya varian 1 dan 2).
+private val SNACK_TILE_COLORS = listOf(
+    Color(0xFFE8833A), Color(0xFF6F4E37), Color(0xFFC98A2D), Color(0xFF4DA3FF),
+    Color(0xFF8B7CFF), Color(0xFF7ED957), Color(0xFFFF5C8A), Color(0xFF2DD4BF)
+)
+
+private fun snackTileColor(name: String): Color =
+    SNACK_TILE_COLORS[name.hashCode().mod(SNACK_TILE_COLORS.size)]
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
     val snacks by dao.snacksFlow().collectAsState(initial = emptyList())
     var showForm by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<SnackEntity?>(null) }
-    var selling by remember { mutableStateOf<SnackEntity?>(null) }
+    var quantities by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    var showBatchSell by remember { mutableStateOf(false) }
+
+    fun setQty(snack: SnackEntity, qty: Int) {
+        val q = qty.coerceIn(0, snack.stock)
+        quantities = if (q == 0) quantities - snack.id else quantities + (snack.id to q)
+    }
+
+    val selected = snacks.filter { (quantities[it.id] ?: 0) > 0 }
+    val totalQty = selected.sumOf { minOf(quantities[it.id] ?: 0, it.stock) }
+    val totalPrice = selected.sumOf { it.price * minOf(quantities[it.id] ?: 0, it.stock) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -203,44 +230,118 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
             )
         }
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(snacks, key = { it.id }) { snack ->
+                val qty = minOf(quantities[snack.id] ?: 0, snack.stock)
+                val habis = snack.stock == 0
                 Card(
+                    onClick = {
+                        editing = snack
+                        showForm = true
+                    },
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    if (habis) {
+                                        MaterialTheme.colorScheme.surfaceContainerHighest
+                                    } else {
+                                        snackTileColor(snack.name)
+                                    },
+                                    RoundedCornerShape(14.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                snack.name.take(1).uppercase(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (habis) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    Color.White
+                                }
+                            )
+                        }
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 12.dp)
+                        ) {
                             Text(
                                 snack.name,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                formatRupiah(snack.price) + " - stok " + snack.stock,
+                                if (habis) {
+                                    formatRupiah(snack.price) + " - Habis"
+                                } else {
+                                    formatRupiah(snack.price) + " - Stok " + snack.stock
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = {
-                            editing = snack
-                            showForm = true
-                        }) {
-                            Icon(Icons.Default.Edit, contentDescription = null)
+                        IconButton(
+                            enabled = qty > 0,
+                            onClick = { setQty(snack, qty - 1) }
+                        ) { Icon(Icons.Default.Remove, contentDescription = null) }
+                        Box(
+                            modifier = Modifier.width(28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                qty.toString(),
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
-                        FilledTonalButton(
-                            enabled = snack.stock > 0,
-                            onClick = { selling = snack }
-                        ) { Text("Jual") }
+                        IconButton(
+                            enabled = qty < snack.stock,
+                            onClick = { setQty(snack, qty + 1) }
+                        ) { Icon(Icons.Default.Add, contentDescription = null) }
                     }
+                }
+            }
+        }
+        if (totalQty > 0) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "$totalQty item dipilih",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            formatRupiah(totalPrice),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    TextButton(onClick = { quantities = emptyMap() }) { Text("Reset") }
+                    Button(onClick = { showBatchSell = true }) { Text("Jual") }
                 }
             }
         }
@@ -253,56 +354,77 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
             onDismiss = { showForm = false }
         )
     }
-    selling?.let { snack ->
-        SellSnackDialog(
-            snack = snack,
+    if (showBatchSell) {
+        BatchSellDialog(
+            items = selected.map { it to minOf(quantities[it.id] ?: 0, it.stock) },
             dao = dao,
             notify = notify,
-            onDismiss = { selling = null }
+            onDismiss = { showBatchSell = false },
+            onDone = {
+                quantities = emptyMap()
+                showBatchSell = false
+            }
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SellSnackDialog(
-    snack: SnackEntity,
+private fun BatchSellDialog(
+    items: List<Pair<SnackEntity, Int>>,
     dao: KasirDao,
     notify: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDone: () -> Unit
 ) {
-    var qty by remember { mutableIntStateOf(1) }
     var method by remember { mutableStateOf(PAY_TUNAI) }
+    var paidText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val total = items.sumOf { it.first.price * it.second }
+    val totalQty = items.sumOf { it.second }
+    val paid = paidText.toLongOrNull() ?: 0L
+    val canPay = method == PAY_QRIS || paid >= total
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Jual - " + snack.name) },
+        title = { Text("Jual Jajan") },
         text = {
-            Column {
-                Text(
-                    formatRupiah(snack.price) + " - stok " + snack.stock,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                items.forEach { (snack, qty) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            snack.name + " x" + qty,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            formatRupiah(snack.price * qty),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Jumlah", modifier = Modifier.weight(1f))
-                    IconButton(
-                        enabled = qty > 1,
-                        onClick = { qty -= 1 }
-                    ) { Icon(Icons.Default.Remove, contentDescription = null) }
-                    Text(qty.toString(), style = MaterialTheme.typography.titleMedium)
-                    IconButton(
-                        enabled = qty < snack.stock,
-                        onClick = { qty += 1 }
-                    ) { Icon(Icons.Default.Add, contentDescription = null) }
+                    Text(
+                        "Total",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        formatRupiah(total),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp)
+                        .padding(top = 14.dp)
                 ) {
                     SegmentedButton(
                         selected = method == PAY_TUNAI,
@@ -317,33 +439,81 @@ private fun SellSnackDialog(
                         label = { Text("QRIS") }
                     )
                 }
-                Text(
-                    "Total: " + formatRupiah(snack.price * qty),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
+                if (method == PAY_TUNAI) {
+                    OutlinedTextField(
+                        value = paidText,
+                        onValueChange = { v -> paidText = v.filter { it.isDigit() } },
+                        label = { Text("Uang diterima") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    )
+                    Row(
+                        modifier = Modifier.padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = false,
+                            onClick = { paidText = total.toString() },
+                            label = { Text("Uang Pas") }
+                        )
+                        FilterChip(
+                            selected = false,
+                            onClick = { paidText = "50000" },
+                            label = { Text("50 rb") }
+                        )
+                        FilterChip(
+                            selected = false,
+                            onClick = { paidText = "100000" },
+                            label = { Text("100 rb") }
+                        )
+                    }
+                    if (paidText.isNotEmpty()) {
+                        Text(
+                            if (paid >= total) {
+                                "Kembalian: " + formatRupiah(paid - total)
+                            } else {
+                                "Kurang: " + formatRupiah(total - paid)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (paid >= total) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                scope.launch {
-                    dao.insertSnackSale(
-                        SnackSaleEntity(
-                            snackId = snack.id,
-                            snackName = snack.name,
-                            price = snack.price,
-                            qty = qty,
-                            total = snack.price * qty,
-                            epoch = System.currentTimeMillis(),
-                            paymentMethod = method
-                        )
-                    )
-                    dao.decreaseStock(snack.id, qty)
-                    notify("Terjual: " + snack.name + " x" + qty)
-                    onDismiss()
+            Button(
+                enabled = canPay,
+                onClick = {
+                    scope.launch {
+                        val nowMs = System.currentTimeMillis()
+                        items.forEach { (snack, qty) ->
+                            dao.insertSnackSale(
+                                SnackSaleEntity(
+                                    snackId = snack.id,
+                                    snackName = snack.name,
+                                    price = snack.price,
+                                    qty = qty,
+                                    total = snack.price * qty,
+                                    epoch = nowMs,
+                                    paymentMethod = method
+                                )
+                            )
+                            dao.decreaseStock(snack.id, qty)
+                        }
+                        notify("Terjual: " + totalQty + " item - " + formatRupiah(total))
+                        onDone()
+                    }
                 }
-            }) { Text("Bayar") }
+            ) { Text("Bayar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Batal") }
