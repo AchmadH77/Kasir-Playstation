@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mesin kasir sederhana: layar di atas, badan trapesium, tiga tombol. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M5,3 L19,3 L19,8 L5,8 Z M4.2,10 L19.8,10 L21,20 L3,20 Z M6.4,12.8 L9.2,12.8 L9.2,15.6 L6.4,15.6 Z M10.6,12.8 L13.4,12.8 L13.4,15.6 L10.6,15.6 Z M14.8,12.8 L17.6,12.8 L17.6,15.6 L14.8,15.6 Z" />
+</vector>
