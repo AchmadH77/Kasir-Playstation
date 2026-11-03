@@ -2,7 +2,7 @@
 
 Aplikasi kasir (point of sale) untuk Android, ditulis dengan Kotlin + Jetpack Compose dan Material 3 Expressive. Proyek ini dimulai dari nol sebagai aplikasi kasir umum (bukan khusus apotek) — fitur akan ditambahkan bertahap.
 
-Status saat ini: **kerangka awal** — aplikasi bisa dibuild dan dipasang, menampilkan layar Beranda sederhana. Belum ada fitur transaksi/produk.
+Status saat ini: **kerangka UI Material 3 Expressive** — aplikasi bisa dibuild dan dipasang, dengan kerangka 4 tab (Beranda, Kasir, Produk, Lainnya) memakai komponen resmi Material 3 Expressive: `ShortNavigationBar`, `LinearWavyProgressIndicator`, `SegmentedButton`, `FilterChip`, dan `ListItem`. Ada saklar mode gelap/terang yang tersimpan. Belum ada data/fitur transaksi dan produk — tab masih berisi status kosong.
 
 ## Tech stack
 
@@ -25,7 +25,7 @@ Status saat ini: **kerangka awal** — aplikasi bisa dibuild dan dipasang, menam
 
 ## Struktur proyek
 
-- `app/src/main/java/id/kasir/app/MainActivity.kt` — activity utama + layar Beranda awal.
+- `app/src/main/java/id/kasir/app/MainActivity.kt` — activity utama + kerangka 4 tab (Beranda, Kasir, Produk, Lainnya).
 - `app/src/main/java/id/kasir/app/Theme.kt` — skema warna hijau terang/gelap + tema Material 3 Expressive.
 - `app/build.gradle.kts` — konfigurasi aplikasi, signing CI, dan dependensi.
 - `.github/workflows/build.yml` — workflow build manual (workflow_dispatch).
