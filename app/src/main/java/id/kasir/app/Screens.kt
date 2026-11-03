@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -77,6 +78,7 @@ import id.kasir.app.data.SessionSnackEntity
 import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.SnackSaleEntity
 import id.kasir.app.data.UnitEntity
+import java.util.Calendar
 import kotlinx.coroutines.launch
 
 // ---------- Struk ----------
@@ -657,6 +659,26 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
         }
         .sortedByDescending { it.first.second }
 
+    // Grafik 7 hari terakhir (selalu 7 hari, tidak mengikuti pilihan periode):
+    // total sesi selesai + penjualan jajan langsung per hari.
+    val dayNames = listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
+    val last7 = (6 downTo 0).map { back ->
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = startOfDay(nowMs)
+        cal.add(Calendar.DAY_OF_YEAR, -back)
+        val dayStart = cal.timeInMillis
+        val dow = cal.get(Calendar.DAY_OF_WEEK)
+        cal.add(Calendar.DAY_OF_YEAR, 1)
+        val dayEnd = cal.timeInMillis
+        val totalDay = finished
+            .filter { (it.endEpoch ?: 0L) in dayStart until dayEnd }
+            .sumOf { it.total } + sales
+            .filter { it.epoch in dayStart until dayEnd }
+            .sumOf { it.total }
+        dayNames[dow - 1] to totalDay
+    }
+    val maxDay = last7.maxOf { it.second }
+
     Column(modifier = Modifier.fillMaxSize()) {
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier
@@ -689,18 +711,6 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                     fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                Text(
-                    "Sewa & sesi: " + formatRupiah(sessionTotal) + " (" +
-                        periodSessions.size + " sesi)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-                Text(
-                    "Jajan langsung: " + formatRupiah(salesTotal) + " (" +
-                        periodSales.size + " penjualan)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
             }
         }
         LazyColumn(
@@ -708,12 +718,104 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            item {
+                Text(
+                    "Pendapatan 7 Hari Terakhir",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        last7.forEach { (dayName, totalDay) ->
+                            val frac = if (maxDay > 0) {
+                                totalDay.toFloat() / maxDay.toFloat()
+                            } else {
+                                0f
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    formatRupiahShort(totalDay),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(90.dp)
+                                        .padding(top = 4.dp),
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.62f)
+                                            .height((90f * frac).coerceAtLeast(4f).dp)
+                                            .background(
+                                                if (totalDay == maxDay && maxDay > 0) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.primaryContainer
+                                                },
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                    )
+                                }
+                                Text(
+                                    dayName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Text(
+                    "Komposisi Pendapatan",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            item {
+                CompositionRow(
+                    label = "Sewa & sesi",
+                    value = sessionTotal,
+                    grandTotal = grandTotal,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            item {
+                CompositionRow(
+                    label = "Jajan langsung",
+                    value = salesTotal,
+                    grandTotal = grandTotal,
+                    color = Color(0xFFE8833A)
+                )
+            }
             if (byUnit.isNotEmpty()) {
                 item {
                     Text(
                         "Unit Terlaris",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
                 items(byUnit) { (info, revenue) ->
@@ -790,6 +892,51 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     }
     receiptSession?.let { s ->
         ReceiptDialog(dao = dao, session = s, onDismiss = { receiptSession = null })
+    }
+}
+
+// Satu baris komposisi pendapatan: titik warna, label, nilai + persen, dan bar proporsi.
+@Composable
+private fun CompositionRow(label: String, value: Long, grandTotal: Long, color: Color) {
+    val pct = if (grandTotal > 0) (value * 100 / grandTotal).toInt() else 0
+    val frac = if (grandTotal > 0) value.toFloat() / grandTotal.toFloat() else 0f
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(color, RoundedCornerShape(50))
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp)
+            )
+            Text(
+                formatRupiah(value) + " (" + pct + "%)",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .height(8.dp)
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainerHighest,
+                    RoundedCornerShape(4.dp)
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(frac)
+                    .height(8.dp)
+                    .background(color, RoundedCornerShape(4.dp))
+            )
+        }
     }
 }
 

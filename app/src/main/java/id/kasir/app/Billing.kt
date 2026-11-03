@@ -27,6 +27,19 @@ fun formatRupiah(value: Long): String {
     return "Rp " + nf.format(value)
 }
 
+// Format ringkas untuk label grafik: 96000 -> "96 rb", 1500000 -> "1,5 jt".
+fun formatRupiahShort(value: Long): String {
+    if (value < 1000L) return value.toString()
+    if (value < 1000000L) return (value / 1000L).toString() + " rb"
+    val whole = value / 1000000L
+    val tenth = (value % 1000000L) / 100000L
+    return if (tenth == 0L) {
+        whole.toString() + " jt"
+    } else {
+        whole.toString() + "," + tenth + " jt"
+    }
+}
+
 fun formatMinutes(min: Int): String {
     val h = min / 60
     val m = min % 60

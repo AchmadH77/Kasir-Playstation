@@ -43,6 +43,17 @@ class BillingTest {
     }
 
     @Test
+    fun formatRupiahShortCompactsForChartLabels() {
+        assertEquals("0", formatRupiahShort(0))
+        assertEquals("500", formatRupiahShort(500))
+        assertEquals("5 rb", formatRupiahShort(5000))
+        assertEquals("96 rb", formatRupiahShort(96000))
+        assertEquals("1 jt", formatRupiahShort(1000000))
+        assertEquals("1,5 jt", formatRupiahShort(1500000))
+        assertEquals("2,7 jt", formatRupiahShort(2750000))
+    }
+
+    @Test
     fun formatMinutesHumanReadable() {
         assertEquals("0 mnt", formatMinutes(0))
         assertEquals("45 mnt", formatMinutes(45))
