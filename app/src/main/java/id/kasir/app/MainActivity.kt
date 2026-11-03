@@ -10,19 +10,24 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -226,18 +231,21 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Pendapatan Hari Ini", style = MaterialTheme.typography.labelLarge)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    formatRupiah(todayIncome),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.padding(top = 2.dp)
+                    "Hari ini " + formatRupiah(todayIncome),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
-                    active.size.toString() + " unit sedang bermain",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 2.dp)
+                    active.size.toString() + " unit bermain",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
@@ -249,16 +257,14 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        LazyColumn(
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             items(units, key = { it.id }) { unit ->
                 val session = active.firstOrNull { it.unitId == unit.id }
-                UnitCard(
+                UnitRow(
                     unit = unit,
                     session = session,
                     now = now,
@@ -304,7 +310,7 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitCard(unit: UnitEntity, session: SessionEntity?, now: Long, onClick: () -> Unit) {
+private fun UnitRow(unit: UnitEntity, session: SessionEntity?, now: Long, onClick: () -> Unit) {
     val paused = session?.status == STATUS_PAUSED
     val remaining = if (session != null && session.mode == MODE_PAKET) remainingMillis(session, now) else 0L
     val overtime = session != null && session.mode == MODE_PAKET && remaining < 0
@@ -314,78 +320,84 @@ private fun UnitCard(unit: UnitEntity, session: SessionEntity?, now: Long, onCli
         overtime -> MaterialTheme.colorScheme.errorContainer
         else -> MaterialTheme.colorScheme.primaryContainer
     }
+    val accent = when {
+        paused -> MaterialTheme.colorScheme.tertiary
+        overtime -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = container),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Tv, contentDescription = null, modifier = Modifier.size(20.dp))
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .fillMaxHeight()
+                    .background(accent)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 14.dp, top = 12.dp, bottom = 12.dp)
+            ) {
                 Text(
-                    unit.name,
+                    unit.name + " - " + unit.consoleType,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-                Text(
-                    unit.consoleType,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 6.dp)
-                )
-            }
-            if (session == null) {
-                Text(
-                    "Kosong",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-                Text(
-                    formatRupiah(unit.hourlyRate) + " / jam",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                Text(
-                    "Ketuk untuk mulai",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            } else {
-                val timerText = when {
-                    session.mode == MODE_OPEN -> formatHms(elapsedMillis(session, now))
-                    overtime -> "+" + formatHms(-remaining)
-                    else -> formatHms(remaining)
-                }
-                Text(
-                    timerText,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(top = 10.dp)
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     when {
-                        paused -> "Jeda"
+                        session == null -> formatRupiah(unit.hourlyRate) + " / jam"
+                        paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
-                        session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes)
-                        else -> "Open billing"
+                        session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes) +
+                            (session.memberName?.let { " - Member: $it" } ?: "")
+                        else -> "Open billing" +
+                            (session.memberName?.let { " - Member: $it" } ?: "")
                     },
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                Text(
-                    formatRupiah(rentalCost(session, now)) + " berjalan",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                session.memberName?.let {
+            }
+            if (session == null) {
+                Column(
+                    modifier = Modifier.padding(end = 14.dp, top = 12.dp, bottom = 12.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
                     Text(
-                        "Member: $it",
+                        "Kosong",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Button(
+                        onClick = onClick,
+                        modifier = Modifier.padding(top = 6.dp)
+                    ) { Text("Mulai") }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.padding(end = 14.dp, top = 12.dp, bottom = 12.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    val timerText = when {
+                        session.mode == MODE_OPEN -> formatHms(elapsedMillis(session, now))
+                        overtime -> "+" + formatHms(-remaining)
+                        else -> formatHms(remaining)
+                    }
+                    Text(
+                        timerText,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        formatRupiah(rentalCost(session, now)) + " berjalan",
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
