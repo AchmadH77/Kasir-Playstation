@@ -21,16 +21,6 @@ data class SnackEntity(
     val stock: Int
 )
 
-// Member: diskon persen untuk sewa + saldo waktu (menit) yang bisa dipakai membayar sewa.
-@Entity(tableName = "members")
-data class MemberEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
-    val phone: String = "",
-    val discountPercent: Int = 0,
-    val timeBalanceMinutes: Int = 0
-)
-
 // Satu sesi main. Timer dihitung dari startEpoch dikurangi total jeda,
 // jadi tetap akurat walau aplikasi ditutup. Tarif dan nama disalin (snapshot)
 // saat sesi mulai, sehingga perubahan tarif tidak mengubah sesi berjalan.
@@ -41,8 +31,6 @@ data class SessionEntity(
     val unitName: String,
     val consoleType: String,
     val hourlyRate: Long,
-    val memberId: Long? = null,
-    val memberName: String? = null,
     val mode: String,
     val paketMinutes: Int = 0,
     val startEpoch: Long,
@@ -52,12 +40,10 @@ data class SessionEntity(
     val endEpoch: Long? = null,
     val rentalCost: Long = 0,
     val snackCost: Long = 0,
-    val discountAmount: Long = 0,
     val total: Long = 0,
     val paymentMethod: String? = null,
     val paidAmount: Long = 0,
-    val changeAmount: Long = 0,
-    val balanceMinutesUsed: Int = 0
+    val changeAmount: Long = 0
 )
 
 // Jajan yang menempel pada satu sesi (satu baris per jenis jajan).
@@ -84,14 +70,3 @@ data class SnackSaleEntity(
     val paymentMethod: String
 )
 
-// Isi ulang saldo waktu member (uang masuk dicatat terpisah dari sewa).
-@Entity(tableName = "topups")
-data class TopUpEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val memberId: Long,
-    val memberName: String,
-    val minutes: Int,
-    val amount: Long,
-    val epoch: Long,
-    val paymentMethod: String
-)

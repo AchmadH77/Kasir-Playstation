@@ -35,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -63,7 +62,6 @@ import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -87,7 +85,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import id.kasir.app.data.DatabaseProvider
 import id.kasir.app.data.KasirDao
-import id.kasir.app.data.MemberEntity
 import id.kasir.app.data.SeedData
 import id.kasir.app.data.SessionEntity
 import id.kasir.app.data.SessionSnackEntity
@@ -123,7 +120,7 @@ private fun KasirApp() {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val notify: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
-    val tabTitles = listOf("Unit", "Jajan", "Member", "Laporan", "Lainnya")
+    val tabTitles = listOf("Unit", "Jajan", "Laporan", "Lainnya")
 
     LaunchedEffect(Unit) { SeedData.ensure(dao) }
 
@@ -154,18 +151,12 @@ private fun KasirApp() {
                         ShortNavigationBarItem(
                             selected = tab == 2,
                             onClick = { tab = 2 },
-                            icon = { Icon(Icons.Default.Group, contentDescription = null) },
-                            label = { Text("Member") }
-                        )
-                        ShortNavigationBarItem(
-                            selected = tab == 3,
-                            onClick = { tab = 3 },
                             icon = { Icon(Icons.Default.Assessment, contentDescription = null) },
                             label = { Text("Laporan") }
                         )
                         ShortNavigationBarItem(
-                            selected = tab == 4,
-                            onClick = { tab = 4 },
+                            selected = tab == 3,
+                            onClick = { tab = 3 },
                             icon = { Icon(Icons.Default.MoreHoriz, contentDescription = null) },
                             label = { Text("Lainnya") }
                         )
@@ -182,8 +173,7 @@ private fun KasirApp() {
                     when (target) {
                         0 -> UnitTab(dao = dao, notify = notify)
                         1 -> JajanTab(dao = dao, notify = notify)
-                        2 -> MemberTab(dao = dao, notify = notify)
-                        3 -> LaporanTab(dao = dao, notify = notify)
+                        2 -> LaporanTab(dao = dao, notify = notify)
                         else -> LainnyaTab(
                             dao = dao,
                             dark = dark,
@@ -352,10 +342,8 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, now: Long, onClic
                         session == null -> formatRupiah(unit.hourlyRate) + " / jam"
                         paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
-                        session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes) +
-                            (session.memberName?.let { " - Member: $it" } ?: "")
-                        else -> "Open billing" +
-                            (session.memberName?.let { " - Member: $it" } ?: "")
+                        session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes)
+                        else -> "Open billing"
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -414,10 +402,8 @@ private fun StartSessionDialog(
     onDismiss: () -> Unit,
     onStarted: () -> Unit
 ) {
-    val members by dao.membersFlow().collectAsState(initial = emptyList())
     var mode by remember { mutableStateOf(MODE_PAKET) }
     var paket by remember { mutableIntStateOf(120) }
-    var memberId by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -480,30 +466,6 @@ private fun StartSessionDialog(
                         modifier = Modifier.padding(top = 12.dp)
                     )
                 }
-                Text(
-                    "Member (opsional)",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-                Row(
-                    modifier = Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = memberId == null,
-                        onClick = { memberId = null },
-                        label = { Text("Tanpa member") }
-                    )
-                    members.forEach { m ->
-                        FilterChip(
-                            selected = memberId == m.id,
-                            onClick = { memberId = m.id },
-                            label = { Text(m.name) }
-                        )
-                    }
-                }
             }
         },
         confirmButton = {
@@ -515,8 +477,6 @@ private fun StartSessionDialog(
                             unitName = unit.name,
                             consoleType = unit.consoleType,
                             hourlyRate = unit.hourlyRate,
-                            memberId = memberId,
-                            memberName = members.firstOrNull { it.id == memberId }?.name,
                             mode = mode,
                             paketMinutes = if (mode == MODE_PAKET) paket else 0,
                             startEpoch = System.currentTimeMillis()
@@ -599,13 +559,6 @@ private fun SessionDetailDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                session.memberName?.let {
-                    Text(
-                        "Member: $it",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -921,25 +874,14 @@ private fun CheckoutDialog(
     onDismiss: () -> Unit,
     onDone: (SessionEntity) -> Unit
 ) {
-    val members by dao.membersFlow().collectAsState(initial = emptyList())
-    val member: MemberEntity? = members.firstOrNull { it.id == session.memberId }
     val scope = rememberCoroutineScope()
-    var useBalance by remember { mutableStateOf(false) }
     var method by remember { mutableStateOf(PAY_TUNAI) }
     var paidText by remember { mutableStateOf("") }
 
     val billable = billableMinutes(session, now)
     val rentalGross = rentalCost(session, now)
     val snackTotal = sessionSnacks.sumOf { it.price * it.qty }
-    val minutesFromBalance = if (useBalance && member != null) {
-        minOf(member.timeBalanceMinutes, billable)
-    } else {
-        0
-    }
-    val rentalCash = session.hourlyRate * (billable - minutesFromBalance) / 60
-    val balanceValue = rentalGross - rentalCash
-    val discount = if (member != null) rentalCash * member.discountPercent / 100 else 0L
-    val total = rentalCash - discount + snackTotal
+    val total = rentalGross + snackTotal
     val paid = paidText.toLongOrNull() ?: 0L
     val canPay = method == PAY_QRIS || paid >= total
 
@@ -957,40 +899,6 @@ private fun CheckoutDialog(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(formatRupiah(rentalGross), style = MaterialTheme.typography.bodyMedium)
-                }
-                if (balanceValue > 0) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Saldo waktu (" + formatMinutes(minutesFromBalance) + ")",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "-" + formatRupiah(balanceValue),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-                if (discount > 0 && member != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Diskon member " + member.discountPercent + "%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "-" + formatRupiah(discount),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
                 }
                 if (snackTotal > 0) {
                     Row(
@@ -1019,25 +927,6 @@ private fun CheckoutDialog(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                }
-                if (member != null && member.timeBalanceMinutes > 0) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Pakai saldo waktu", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                "Saldo " + member.name + ": " +
-                                    formatMinutes(member.timeBalanceMinutes),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(checked = useBalance, onCheckedChange = { useBalance = it })
-                    }
                 }
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier
@@ -1125,17 +1014,12 @@ private fun CheckoutDialog(
                             pauseStartEpoch = null,
                             rentalCost = rentalGross,
                             snackCost = snackTotal,
-                            discountAmount = discount,
                             total = total,
                             paymentMethod = method,
                             paidAmount = if (method == PAY_QRIS) total else paid,
                             changeAmount = if (method == PAY_QRIS) 0L else paid - total,
-                            balanceMinutesUsed = minutesFromBalance
                         )
                         dao.updateSession(finished)
-                        if (minutesFromBalance > 0 && member != null) {
-                            dao.useBalance(member.id, minutesFromBalance)
-                        }
                         onDone(finished)
                     }
                 }

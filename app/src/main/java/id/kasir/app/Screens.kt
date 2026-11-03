@@ -67,12 +67,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import id.kasir.app.data.KasirDao
-import id.kasir.app.data.MemberEntity
 import id.kasir.app.data.SessionEntity
 import id.kasir.app.data.SessionSnackEntity
 import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.SnackSaleEntity
-import id.kasir.app.data.TopUpEntity
 import id.kasir.app.data.UnitEntity
 import kotlinx.coroutines.launch
 
@@ -95,22 +93,11 @@ fun receiptText(
     sb.appendLine("Struk Rental PS")
     sb.appendLine("------------------------------")
     sb.appendLine("Unit    : " + session.unitName + " (" + session.consoleType + ")")
-    session.memberName?.let { sb.appendLine("Member  : $it") }
     sb.appendLine("Mulai   : " + formatDateTime(session.startEpoch))
     sb.appendLine("Selesai : " + formatDateTime(end))
     sb.appendLine("Mode    : " + modeLabel + " (ditagih " + formatMinutes(billed) + ")")
     sb.appendLine("------------------------------")
     sb.appendLine("Sewa    : " + formatRupiah(session.rentalCost))
-    if (session.balanceMinutesUsed > 0) {
-        val balanceValue = session.hourlyRate * session.balanceMinutesUsed / 60
-        sb.appendLine(
-            "Saldo waktu " + formatMinutes(session.balanceMinutesUsed) +
-                ": -" + formatRupiah(balanceValue)
-        )
-    }
-    if (session.discountAmount > 0) {
-        sb.appendLine("Diskon member: -" + formatRupiah(session.discountAmount))
-    }
     snacks.forEach {
         sb.appendLine(it.snackName + " x" + it.qty + " : " + formatRupiah(it.price * it.qty))
     }
@@ -469,370 +456,6 @@ private fun SnackFormDialog(
     )
 }
 
-// ---------- Tab Member ----------
-
-@Composable
-fun MemberTab(dao: KasirDao, notify: (String) -> Unit) {
-    val members by dao.membersFlow().collectAsState(initial = emptyList())
-    var showAddForm by remember { mutableStateOf(false) }
-    var selectedId by remember { mutableStateOf<Long?>(null) }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Daftar member",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            Button(onClick = { showAddForm = true }) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Text("Tambah", modifier = Modifier.padding(start = 6.dp))
-            }
-        }
-        if (members.isEmpty()) {
-            Text(
-                "Belum ada member. Member dapat diskon sewa dan bisa menabung saldo waktu.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-        }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(members, key = { it.id }) { member ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedId = member.id }
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text(
-                            member.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (member.phone.isNotBlank()) {
-                            Text(
-                                member.phone,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Text(
-                            "Diskon " + member.discountPercent + "% - Saldo waktu: " +
-                                formatMinutes(member.timeBalanceMinutes),
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-    if (showAddForm) {
-        MemberFormDialog(
-            initial = null,
-            dao = dao,
-            notify = notify,
-            onDismiss = { showAddForm = false }
-        )
-    }
-    selectedId?.let { mid ->
-        val member = members.firstOrNull { it.id == mid }
-        if (member != null) {
-            MemberDetailDialog(
-                member = member,
-                dao = dao,
-                notify = notify,
-                onDismiss = { selectedId = null }
-            )
-        }
-    }
-}
-
-@Composable
-private fun MemberFormDialog(
-    initial: MemberEntity?,
-    dao: KasirDao,
-    notify: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var name by remember { mutableStateOf(initial?.name ?: "") }
-    var phone by remember { mutableStateOf(initial?.phone ?: "") }
-    var discountText by remember { mutableStateOf(initial?.discountPercent?.toString() ?: "10") }
-    val scope = rememberCoroutineScope()
-    val discount = (discountText.toIntOrNull() ?: 0).coerceIn(0, 100)
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "Tambah Member" else "Edit Member") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nama member") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("No. HP (opsional)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                )
-                OutlinedTextField(
-                    value = discountText,
-                    onValueChange = { v -> discountText = v.filter { c -> c.isDigit() } },
-                    label = { Text("Diskon sewa (%)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = name.isNotBlank(),
-                onClick = {
-                    scope.launch {
-                        if (initial == null) {
-                            dao.insertMember(
-                                MemberEntity(
-                                    name = name.trim(),
-                                    phone = phone.trim(),
-                                    discountPercent = discount
-                                )
-                            )
-                            notify("Member ditambahkan")
-                        } else {
-                            dao.updateMember(
-                                initial.copy(
-                                    name = name.trim(),
-                                    phone = phone.trim(),
-                                    discountPercent = discount
-                                )
-                            )
-                            notify("Member diperbarui")
-                        }
-                        onDismiss()
-                    }
-                }
-            ) { Text("Simpan") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Batal") }
-        }
-    )
-}
-
-@Composable
-private fun MemberDetailDialog(
-    member: MemberEntity,
-    dao: KasirDao,
-    notify: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var showEdit by remember { mutableStateOf(false) }
-    var showTopUp by remember { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(member.name) },
-        text = {
-            Column {
-                if (member.phone.isNotBlank()) {
-                    Text("HP: " + member.phone, style = MaterialTheme.typography.bodyMedium)
-                }
-                Text(
-                    "Diskon sewa: " + member.discountPercent + "%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                Text(
-                    "Saldo waktu: " + formatMinutes(member.timeBalanceMinutes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                Row(
-                    modifier = Modifier.padding(top = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilledTonalButton(onClick = { showTopUp = true }) { Text("Isi Saldo") }
-                    FilledTonalButton(onClick = { showEdit = true }) { Text("Edit") }
-                }
-                if (confirmDelete) {
-                    Text(
-                        "Yakin hapus member ini? Saldo waktu yang tersisa ikut hilang.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                    Row(modifier = Modifier.padding(top = 6.dp)) {
-                        TextButton(onClick = {
-                            scope.launch {
-                                dao.deleteMember(member)
-                                notify("Member dihapus")
-                                onDismiss()
-                            }
-                        }) {
-                            Text("Ya, Hapus", color = MaterialTheme.colorScheme.error)
-                        }
-                        TextButton(onClick = { confirmDelete = false }) { Text("Batal") }
-                    }
-                } else {
-                    TextButton(
-                        onClick = { confirmDelete = true },
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Text("Hapus member", color = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Tutup") }
-        }
-    )
-    if (showEdit) {
-        MemberFormDialog(
-            initial = member,
-            dao = dao,
-            notify = notify,
-            onDismiss = { showEdit = false }
-        )
-    }
-    if (showTopUp) {
-        TopUpDialog(
-            member = member,
-            dao = dao,
-            notify = notify,
-            onDismiss = { showTopUp = false }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TopUpDialog(
-    member: MemberEntity,
-    dao: KasirDao,
-    notify: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var minutesText by remember { mutableStateOf("60") }
-    var amountText by remember { mutableStateOf("") }
-    var method by remember { mutableStateOf(PAY_TUNAI) }
-    val scope = rememberCoroutineScope()
-    val minutes = minutesText.toIntOrNull() ?: 0
-    val amount = amountText.toLongOrNull() ?: 0L
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Isi Saldo Waktu") },
-        text = {
-            Column {
-                Text(
-                    member.name + " - saldo sekarang " + formatMinutes(member.timeBalanceMinutes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = minutesText,
-                    onValueChange = { v -> minutesText = v.filter { c -> c.isDigit() } },
-                    label = { Text("Tambah waktu (menit)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                )
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(60, 120, 300).forEach { m ->
-                        FilterChip(
-                            selected = minutes == m,
-                            onClick = { minutesText = m.toString() },
-                            label = { Text(formatMinutes(m)) }
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { v -> amountText = v.filter { c -> c.isDigit() } },
-                    label = { Text("Harga bayar (Rp)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                )
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                ) {
-                    SegmentedButton(
-                        selected = method == PAY_TUNAI,
-                        onClick = { method = PAY_TUNAI },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        label = { Text("Tunai") }
-                    )
-                    SegmentedButton(
-                        selected = method == PAY_QRIS,
-                        onClick = { method = PAY_QRIS },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        label = { Text("QRIS") }
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = minutes > 0 && amount > 0,
-                onClick = {
-                    scope.launch {
-                        dao.insertTopUp(
-                            TopUpEntity(
-                                memberId = member.id,
-                                memberName = member.name,
-                                minutes = minutes,
-                                amount = amount,
-                                epoch = System.currentTimeMillis(),
-                                paymentMethod = method
-                            )
-                        )
-                        dao.addBalance(member.id, minutes)
-                        notify("Saldo " + member.name + " bertambah " + formatMinutes(minutes))
-                        onDismiss()
-                    }
-                }
-            ) { Text("Simpan") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Batal") }
-        }
-    )
-}
-
 // ---------- Tab Laporan ----------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -840,7 +463,6 @@ private fun TopUpDialog(
 fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     val finished by dao.finishedSessionsFlow().collectAsState(initial = emptyList())
     val sales by dao.snackSalesFlow().collectAsState(initial = emptyList())
-    val topUps by dao.topUpsFlow().collectAsState(initial = emptyList())
     var period by remember { mutableIntStateOf(0) }
     var receiptSession by remember { mutableStateOf<SessionEntity?>(null) }
     val nowMs = System.currentTimeMillis()
@@ -852,11 +474,9 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     }
     val periodSessions = finished.filter { (it.endEpoch ?: 0L) >= from }
     val periodSales = sales.filter { it.epoch >= from }
-    val periodTopUps = topUps.filter { it.epoch >= from }
     val sessionTotal = periodSessions.sumOf { it.total }
     val salesTotal = periodSales.sumOf { it.total }
-    val topUpTotal = periodTopUps.sumOf { it.amount }
-    val grandTotal = sessionTotal + salesTotal + topUpTotal
+    val grandTotal = sessionTotal + salesTotal
     val byUnit = periodSessions.groupBy { it.unitName }
         .map { (name, list) ->
             Triple(
@@ -908,12 +528,6 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 Text(
                     "Jajan langsung: " + formatRupiah(salesTotal) + " (" +
                         periodSales.size + " penjualan)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                Text(
-                    "Top up saldo: " + formatRupiah(topUpTotal) + " (" +
-                        periodTopUps.size + " kali)",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 2.dp)
                 )
@@ -982,8 +596,7 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                formatDateTime(session.endEpoch ?: session.startEpoch) +
-                                    (session.memberName?.let { " - $it" } ?: ""),
+                                formatDateTime(session.endEpoch ?: session.startEpoch),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1101,7 +714,7 @@ fun LainnyaTab(
                     "Kasir rental PlayStation versi 1.0.0.\n\n" +
                         "Fitur: billing per unit dengan mode Paket dan Open Billing, " +
                         "timer akurat dari waktu mulai, jajan menyatu di tagihan sesi, " +
-                        "member dengan diskon dan saldo waktu, laporan pendapatan, " +
+                        "laporan pendapatan, " +
                         "serta struk yang bisa dibagikan. Semua data tersimpan lokal di HP."
                 )
             },

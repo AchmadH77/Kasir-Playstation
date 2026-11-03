@@ -67,7 +67,7 @@ fun billableMinutes(session: SessionEntity, now: Long): Int {
     }
 }
 
-// Biaya sewa kotor (sebelum diskon dan saldo waktu) pada waktu tertentu.
+// Biaya sewa kotor pada waktu tertentu.
 fun rentalCost(session: SessionEntity, now: Long): Long =
     session.hourlyRate * billableMinutes(session, now) / 60
 

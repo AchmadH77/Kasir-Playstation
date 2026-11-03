@@ -52,25 +52,6 @@ interface KasirDao {
     @Query("UPDATE snacks SET stock = stock + :qty WHERE id = :id")
     suspend fun increaseStock(id: Long, qty: Int)
 
-    // Member
-    @Query("SELECT * FROM members ORDER BY name ASC")
-    fun membersFlow(): Flow<List<MemberEntity>>
-
-    @Insert
-    suspend fun insertMember(member: MemberEntity): Long
-
-    @Update
-    suspend fun updateMember(member: MemberEntity)
-
-    @Delete
-    suspend fun deleteMember(member: MemberEntity)
-
-    @Query("UPDATE members SET timeBalanceMinutes = timeBalanceMinutes + :minutes WHERE id = :id")
-    suspend fun addBalance(id: Long, minutes: Int)
-
-    @Query("UPDATE members SET timeBalanceMinutes = timeBalanceMinutes - :minutes WHERE id = :id")
-    suspend fun useBalance(id: Long, minutes: Int)
-
     // Sesi
     @Query("SELECT * FROM sessions WHERE status != 'FINISHED' ORDER BY startEpoch ASC")
     fun activeSessionsFlow(): Flow<List<SessionEntity>>
@@ -116,23 +97,15 @@ interface KasirDao {
     @Insert
     suspend fun insertSnackSale(sale: SnackSaleEntity): Long
 
-    // Top up saldo waktu member
-    @Query("SELECT * FROM topups ORDER BY epoch DESC")
-    fun topUpsFlow(): Flow<List<TopUpEntity>>
-
-    @Insert
-    suspend fun insertTopUp(topUp: TopUpEntity): Long
 }
 
 @Database(
     entities = [
         UnitEntity::class,
         SnackEntity::class,
-        MemberEntity::class,
         SessionEntity::class,
         SessionSnackEntity::class,
-        SnackSaleEntity::class,
-        TopUpEntity::class
+        SnackSaleEntity::class
     ],
     version = 1,
     exportSchema = false
