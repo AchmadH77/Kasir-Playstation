@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,15 +33,16 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -956,42 +958,131 @@ fun LainnyaTab(
     var storeNameText by remember { mutableStateOf("") }
     var showStoreDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    val units by dao.unitsFlow().collectAsState(initial = emptyList())
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 8.dp)
+            .padding(16.dp)
     ) {
-        ListItem(
-            headlineContent = { Text("Atur Unit & Tarif") },
-            supportingContent = { Text("Tambah, ubah, dan hapus unit beserta tarif per jam") },
-            leadingContent = { Icon(Icons.Default.Tv, contentDescription = null) },
-            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-            modifier = Modifier.clickable { onOpenUnitManage() }
-        )
-        ListItem(
-            headlineContent = { Text("Nama Toko") },
-            supportingContent = { Text(storeName) },
-            leadingContent = { Icon(Icons.Default.Storefront, contentDescription = null) },
-            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-            modifier = Modifier.clickable {
-                storeNameText = storeName
-                showStoreDialog = true
+        // Header toko: identitas yang tampil di struk.
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(16.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Tv,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.padding(start = 14.dp)) {
+                        Text(
+                            storeName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Kasir Rental PlayStation",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            storeNameText = storeName
+                            showStoreDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) { Text("Ubah Nama") }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        "v1.0.0",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
-        )
-        ListItem(
-            headlineContent = { Text("Mode Gelap") },
-            supportingContent = { Text(if (dark) "Aktif" else "Nonaktif") },
-            leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
-            trailingContent = { Switch(checked = dark, onCheckedChange = onDarkChange) }
-        )
-        ListItem(
-            headlineContent = { Text("Tentang Kasir") },
-            supportingContent = { Text("Versi 1.0.0 - kasir rental PlayStation") },
-            leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
-            trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-            modifier = Modifier.clickable { showAbout = true }
-        )
+        }
+        Column(modifier = Modifier.padding(top = 16.dp)) {
+            ListItem(
+                headlineContent = { Text("Atur Unit & Tarif") },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Tv,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            units.size.toString() + " unit",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    }
+                },
+                modifier = Modifier.clickable { onOpenUnitManage() }
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
+            ListItem(
+                headlineContent = { Text("Mode Gelap") },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.DarkMode,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = { Switch(checked = dark, onCheckedChange = onDarkChange) }
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
+            ListItem(
+                headlineContent = { Text("Tentang Kasir") },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Versi 1.0.0",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    }
+                },
+                modifier = Modifier.clickable { showAbout = true }
+            )
+        }
     }
     if (showStoreDialog) {
         AlertDialog(
