@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Siluet gamepad untuk ikon bertema (Android 13+): hanya bentuk, satu warna. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#000000"
+        android:pathData="M19,61 a9,11 0 1,0 18,0 a9,11 0 1,0 -18,0 M71,61 a9,11 0 1,0 18,0 a9,11 0 1,0 -18,0 M35,39 h38 a13,13 0 0 1 13,13 v2 a13,13 0 0 1 -13,13 h-38 a13,13 0 0 1 -13,-13 v-2 a13,13 0 0 1 13,-13 z" />
+</vector>
