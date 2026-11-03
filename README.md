@@ -2,54 +2,54 @@
 
 [![Build APK](https://github.com/Achmadh7/kasir/actions/workflows/build.yml/badge.svg)](https://github.com/Achmadh7/kasir/actions/workflows)
 
-Aplikasi kasir (billing) khusus **rental PlayStation** untuk Android, ditulis dengan Kotlin + Jetpack Compose dan Material 3 Expressive. Semua data tersimpan lokal di HP (Room), tanpa server.
+A **PlayStation rental** cashier (billing) app for Android, written in Kotlin + Jetpack Compose with Material 3 Expressive. All data is stored locally on the phone (Room) — no server.
 
-## Fitur
+## Features
 
-- **Billing per unit** — baris lebar per TV dengan garis status berwarna (kosong/bermain/jeda/lewat waktu) dan timer berjalan atau hitung mundur paket. Timer dihitung dari waktu mulai yang tersimpan di database, jadi tetap akurat walau aplikasi ditutup.
-- **Dua mode main** — Paket (durasi tetap 1–5 jam, hitung mundur, kelebihan waktu ditagih per blok) dan Open Billing (jalan terus, dibulatkan ke atas per blok 10 menit).
-- **Kelola sesi** — tambah waktu, jeda & lanjut (waktu jeda tidak dihitung), tambah jajan ke tagihan, batalkan sesi (stok jajan kembali), stop & bayar.
-- **Jajan / F&B** — jual cepat dengan stepper dan petak warna per menu; beberapa item bisa dijual sekaligus dalam satu pembayaran, atau ditambahkan ke tagihan sesi yang sedang berjalan. Stok berkurang otomatis dan jumlah tidak bisa melebihi stok.
-- **Pembayaran** — Tunai (uang diterima + kembalian otomatis + tombol uang pas/pecahan) atau QRIS.
-- **Laporan** — total pendapatan per periode (hari ini / minggu ini / bulan ini / semua), grafik batang pendapatan 7 hari terakhir, komposisi pendapatan sewa vs jajan lengkap dengan persentase, unit terlaris, dan riwayat sesi.
-- **Struk** — rincian pembayaran yang bisa dibagikan (teks) ke aplikasi lain; nama toko bisa diatur dan tampil di struk.
-- **Tampilan** — 4 tab (Unit, Jajan, Laporan, Lainnya) dengan dock navigasi melayang; tab Lainnya berisi header toko, jalan pintas kelola unit & tarif beserta jumlah unit, dan mode gelap/terang yang tersimpan.
+- **Per-unit billing** — a wide row per TV with a coloured status accent (vacant / playing / paused / overtime) and a running timer or package countdown. Timers are computed from the start time stored in the database, so they stay accurate even when the app is closed.
+- **Two play modes** — Package (fixed duration of 1–5 hours, countdown, overtime billed per block) and Open Billing (runs until stopped, rounded up to 10-minute blocks).
+- **Session controls** — add time, pause & resume (paused time is not billed), add snacks to the bill, cancel a session (snack stock is restored), stop & pay.
+- **Snacks / F&B** — quick sell with steppers and a coloured tile per menu item; several items can be sold together in a single payment, or added to a running session's bill. Stock decreases automatically and quantities cannot exceed stock.
+- **Payment** — Cash (amount tendered + automatic change + exact-amount and denomination shortcuts) or QRIS.
+- **Reports** — revenue totals per period (today / this week / this month / all time), a bar chart of the last 7 days of revenue, a revenue composition (rental vs snacks) with percentages, best-selling units, and session history.
+- **Receipt** — payment details that can be shared (as text) to other apps; the store name is configurable and appears on the receipt.
+- **Appearance** — 4 tabs (Unit, Snacks, Reports, More) with a floating navigation dock; the More tab carries a store header, a shortcut to unit & rate management with the live unit count, and a persisted dark/light mode.
 
-Saat pertama dibuka, aplikasi berisi data contoh (6 unit TV dan 6 menu jajan) yang bisa diubah atau dihapus.
+On first launch the app is seeded with sample data (6 TV units and 6 snack menu items) that can all be edited or deleted.
 
 ## Tech stack
 
 | | |
 |---|---|
-| Bahasa | Kotlin 2.2.20 |
+| Language | Kotlin 2.2.20 |
 | UI | Jetpack Compose (BOM 2025.10.00), Material3 1.5.0-alpha08 (MaterialExpressiveTheme) |
-| Database | Room 2.7.2 (KSP 2.2.20-2.0.4), sepenuhnya offline |
+| Database | Room 2.7.2 (KSP 2.2.20-2.0.4), fully offline |
 | Build | AGP 8.11.1, Gradle 8.13, JDK 17 |
 | Android | minSdk 26 (Android 8.0), targetSdk 34, compileSdk 36 |
 | Package | `id.kasir.app` |
-| Versi | 1.0.0 |
-| Signing | Keystore tetap di repo (`kasir.p12`, PKCS12) — semua build CI memakai tanda tangan yang sama, jadi update bisa dipasang menimpa versi lama |
-| R8 | Minify + shrink resources aktif di build debug dan release |
+| Version | 1.0.0 |
+| Signing | A fixed keystore in the repo (`kasir.p12`, PKCS12) — every CI build uses the same signature, so updates install over older versions |
+| R8 | Minify + resource shrinking enabled for both debug and release builds |
 
-## Cara build APK
+## Building the APK
 
-**Tanpa komputer (GitHub Actions):** buka tab **Actions** di repo ini → workflow **Build APK** → **Run workflow** di branch `main` → unduh artifact **`app-debug-apk`** → pasang di HP. Workflow menjalankan unit test dulu sebelum build. (Selalu mulai run baru; menjalankan ulang run lama akan membuild commit lama.)
+**Without a computer (GitHub Actions):** open the **Actions** tab of this repo → the **Build APK** workflow → **Run workflow** on branch `main` → download the **`app-debug-apk`** artifact → install it on the phone. The workflow runs the unit tests before building. (Always start a fresh run; re-running an old run rebuilds that old commit.)
 
-**Dengan Android Studio:** buka folder repo ini, tunggu Gradle Sync, lalu Build APK.
+**With Android Studio:** open this repo folder, wait for Gradle Sync, then Build APK.
 
-## Struktur proyek
+## Project structure
 
-- `app/src/main/java/id/kasir/app/MainActivity.kt` — activity utama, kerangka aplikasi + dock navigasi melayang, tab Unit (daftar unit + timer), dialog mulai sesi, detail sesi, dan pembayaran.
-- `app/src/main/java/id/kasir/app/Screens.kt` — tab Jajan, Laporan, Lainnya, layar kelola unit & tarif, dan dialog struk.
-- `app/src/main/java/id/kasir/app/Billing.kt` — logika billing murni (timer, pembulatan blok 10 menit, biaya sewa) dan format tanggal/rupiah.
-- `app/src/main/java/id/kasir/app/Theme.kt` — skema warna hijau terang/gelap + tema Material 3 Expressive.
-- `app/src/main/java/id/kasir/app/data/Models.kt` — entitas Room (unit, jajan, sesi, jajan sesi, penjualan jajan).
-- `app/src/main/java/id/kasir/app/data/AppDatabase.kt` — DAO, database Room, dan data contoh awal.
-- `app/src/test/java/id/kasir/app/BillingTest.kt` — 16 unit test untuk logika murni di `Billing.kt`.
-- `app/build.gradle.kts` — konfigurasi aplikasi, signing CI, dan dependensi.
-- `.github/workflows/build.yml` — workflow build manual (workflow_dispatch): unit test, lalu build APK.
-- `docs/ARSITEKTUR.md` — catatan arsitektur: model data, aturan billing, alur pembayaran & stok, signing, dan CI.
+- `app/src/main/java/id/kasir/app/MainActivity.kt` — the main activity, the app shell + floating navigation dock, the Unit tab (unit list + timers), and the start-session, session-detail, and checkout dialogs.
+- `app/src/main/java/id/kasir/app/Screens.kt` — the Snacks, Reports, and More tabs, the unit & rate management screen, and the receipt dialog.
+- `app/src/main/java/id/kasir/app/Billing.kt` — pure billing logic (timers, 10-minute block rounding, rental cost) and date/currency formatting.
+- `app/src/main/java/id/kasir/app/Theme.kt` — the green light/dark colour schemes + the Material 3 Expressive theme.
+- `app/src/main/java/id/kasir/app/data/Models.kt` — Room entities (units, snacks, sessions, session snacks, snack sales).
+- `app/src/main/java/id/kasir/app/data/AppDatabase.kt` — the DAO, the Room database, and the seed data.
+- `app/src/test/java/id/kasir/app/BillingTest.kt` — 16 unit tests for the pure logic in `Billing.kt`.
+- `app/build.gradle.kts` — app configuration, CI signing, and dependencies.
+- `.github/workflows/build.yml` — the manual build workflow (workflow_dispatch): unit tests, then the APK build.
+- `docs/ARSITEKTUR.md` — architecture notes: data model, billing rules, payment & stock flow, signing, and CI.
 
-## Lisensi
+## License
 
-MIT — lihat berkas [LICENSE](LICENSE).
+MIT — see the [LICENSE](LICENSE) file.

@@ -1,17 +1,17 @@
-# Arsitektur Kasir
+# Kasir Architecture
 
-Dokumen ini merangkum keputusan teknis aplikasi Kasir (billing rental PlayStation): struktur kode, model data, aturan billing, alur pembayaran dan stok, tema, signing, CI, dan pengujian. Ditulis agar pengembang (atau saya di masa depan) bisa memahami aplikasi tanpa membaca semua kode dari nol.
+This document summarizes the technical decisions behind Kasir (a PlayStation rental billing app): code structure, data model, billing rules, payment and stock flow, theming, signing, CI, and testing — so a developer (or future me) can understand the app without reading all of the code from scratch.
 
-## Gambaran umum
+## Overview
 
-- Aplikasi Android satu activity (`MainActivity`), seluruh UI Jetpack Compose.
-- 100% offline: semua data di database Room lokal; tidak ada jaringan, akun, atau server.
-- Tanpa ViewModel: composable membaca `Flow` dari DAO secara langsung (`collectAsState`) dan menulis lewat `rememberCoroutineScope`. Logika hitung murni dipisah ke `Billing.kt` agar bisa diuji unit test.
-- Navigasi 4 tab (Unit, Jajan, Laporan, Lainnya) dengan state `Int` sederhana + `AnimatedContent` (fade 300 ms), ditambah satu layar penuh Kelola Unit & Tarif yang menggantikan kerangka utama saat dibuka.
+- A single-activity Android app (`MainActivity`); the entire UI is Jetpack Compose.
+- 100% offline: all data lives in a local Room database; no network, accounts, or server.
+- No ViewModel: composables read DAO `Flow`s directly (`collectAsState`) and write through `rememberCoroutineScope`. Pure calculation logic is separated into `Billing.kt` so it can be unit tested.
+- Navigation is a simple `Int` tab state (Unit, Snacks, Reports, More) + `AnimatedContent` (300 ms fade), plus one full-screen Unit & Rate Management screen that replaces the main shell while open.
 
 ## Stack
 
-| Komponen | Versi / catatan |
+| Component | Version / notes |
 |---|---|
 | Kotlin | 2.2.20 |
 | Compose BOM | 2025.10.00 |
@@ -19,79 +19,79 @@ Dokumen ini merangkum keputusan teknis aplikasi Kasir (billing rental PlayStatio
 | AGP / Gradle | 8.11.1 / 8.13 (JDK 17) |
 | Room | 2.7.2 via KSP 2.2.20-2.0.4 |
 | Android | minSdk 26, targetSdk 34, compileSdk 36 |
-| Package | `id.kasir.app`, versi 1.0.0 (code 1) |
+| Package | `id.kasir.app`, version 1.0.0 (code 1) |
 
-## Struktur kode
+## Code structure
 
-| Berkas | Isi |
+| File | Contents |
 |---|---|
-| `MainActivity.kt` | `KasirApp` (kerangka, dock navigasi melayang, state tema), tab Unit, dialog Mulai Sesi / Detail Sesi / Tambah Jajan / Pembayaran |
-| `Screens.kt` | Dialog struk + `receiptText()`, tab Jajan (stepper + pembayaran massal), tab Laporan (grafik 7 hari + komposisi), tab Lainnya (header toko), layar Kelola Unit & Tarif |
-| `Billing.kt` | Logika murni: waktu berlalu, pembulatan blok, biaya sewa, sisa paket, format rupiah/tanggal |
-| `Theme.kt` | Skema warna hijau terang/gelap untuk `MaterialExpressiveTheme` |
-| `data/Models.kt` | Lima entitas Room |
+| `MainActivity.kt` | `KasirApp` (shell, floating navigation dock, theme state), the Unit tab, and the Start Session / Session Detail / Add Snack / Checkout dialogs |
+| `Screens.kt` | The receipt dialog + `receiptText()`, the Snacks tab (steppers + batch payment), the Reports tab (7-day chart + composition), the More tab (store header), and the Unit & Rate Management screen |
+| `Billing.kt` | Pure logic: elapsed time, block rounding, rental cost, remaining package time, currency/date formatting |
+| `Theme.kt` | The green light/dark colour schemes for `MaterialExpressiveTheme` |
+| `data/Models.kt` | The five Room entities |
 | `data/AppDatabase.kt` | `KasirDao`, `AppDatabase`, `DatabaseProvider` (singleton), `SeedData` |
 
-## Model data (Room, versi 1)
+## Data model (Room, version 1)
 
-| Entitas | Tabel | Kolom penting |
+| Entity | Table | Key columns |
 |---|---|---|
-| `UnitEntity` | `units` | nama (TV 01), jenis konsol (PS3/PS4/PS5), tarif per jam |
-| `SnackEntity` | `snacks` | nama, harga, stok |
-| `SessionEntity` | `sessions` | unit, mode (PAKET/OPEN), waktu mulai/selesai, akumulasi jeda, durasi paket, status (RUNNING/PAUSED/FINISHED), total sewa, metode & jumlah bayar |
-| `SessionSnackEntity` | `session_snacks` | sesi, jajan, jumlah, harga saat itu |
-| `SnackSaleEntity` | `snack_sales` | jajan, jumlah, harga, waktu, metode bayar (penjualan langsung di tab Jajan) |
+| `UnitEntity` | `units` | name (TV 01), console type (PS3/PS4/PS5), hourly rate |
+| `SnackEntity` | `snacks` | name, price, stock |
+| `SessionEntity` | `sessions` | unit, mode (PAKET/OPEN), start/end epochs, accumulated pause, package duration, status (RUNNING/PAUSED/FINISHED), rental total, payment method & amount |
+| `SessionSnackEntity` | `session_snacks` | session, snack, quantity, price at the time |
+| `SnackSaleEntity` | `snack_sales` | snack, quantity, price, timestamp, payment method (direct sales from the Snacks tab) |
 
-Harga selalu disimpan sebagai snapshot pada baris transaksi, jadi perubahan harga menu tidak mengubah riwayat lama.
+Prices are always stored as snapshots on the transaction rows, so changing a menu price never alters past records.
 
-## Aturan billing (`Billing.kt`)
+## Billing rules (`Billing.kt`)
 
-- Waktu berlalu = (waktu selesai atau sekarang) − waktu mulai − total jeda − jeda yang sedang berjalan. Karena dihitung dari epoch tersimpan, timer akurat walau aplikasi ditutup atau HP restart.
-- **Open Billing**: menit tertagih = waktu berlalu dibulatkan **ke atas** per blok 10 menit, minimum 1 blok.
-- **Paket**: durasi paket menjadi dasar; kelebihan waktu di atas paket ditagih dengan pembulatan blok 10 menit yang sama. Harga paket linear dari tarif per jam (tidak ada tabel harga paket terpisah).
-- Biaya sewa = tarif per jam × menit tertagih / 60, dibulatkan ke rupiah terdekat.
-- Konstanta: `BLOCK_MINUTES = 10`, pilihan paket 60–300 menit, jenis konsol PS3/PS4/PS5.
-- Helper tampilan: `formatRupiah` (Rp1.500.000), `formatRupiahShort` untuk label grafik (96 rb, 1,5 jt), `formatMinutes`, `formatHms`, serta batas periode `startOfDay` / `startOfWeek` (Senin) / `startOfMonth` untuk Laporan.
+- Elapsed time = (end time or now) − start time − accumulated pause − the currently ongoing pause. Because it is computed from stored epochs, timers stay accurate even if the app is closed or the phone restarts.
+- **Open Billing**: billable minutes = elapsed time rounded **up** to 10-minute blocks, minimum 1 block.
+- **Package**: the package duration is the base; time beyond the package is billed with the same 10-minute block rounding. Package prices are linear from the hourly rate (there is no separate package price table).
+- Rental cost = hourly rate × billable minutes / 60, rounded to the nearest rupiah.
+- Constants: `BLOCK_MINUTES = 10`, package options 60–300 minutes, console types PS3/PS4/PS5.
+- Display helpers: `formatRupiah` (Rp1.500.000), `formatRupiahShort` for chart labels (96 rb, 1,5 jt), `formatMinutes`, `formatHms`, and the period bounds `startOfDay` / `startOfWeek` (Monday) / `startOfMonth` used by Reports.
 
-## Alur pembayaran & stok
+## Payment & stock flow
 
-- Checkout sesi: total = total sewa + total jajan sesi. Tunai mewajibkan uang diterima ≥ total dan menampilkan kembalian; QRIS selalu pas. Setelah bayar, sesi berstatus FINISHED dan struk ditawarkan untuk dibagikan.
-- Membatalkan sesi mengembalikan stok semua jajan sesi lalu menghapus sesi beserta baris jajannya.
-- Penjualan langsung di tab Jajan: pengguna menaikkan stepper beberapa item (dibatasi stok), lalu membayar semuanya dalam satu dialog (Tunai/QRIS). Setiap item menjadi satu `SnackSaleEntity` dan stoknya dikurangi.
-- Jajan yang ditambahkan ke sesi mengurangi stok saat itu juga; mengurangi jumlah atau membatalkan sesi mengembalikannya.
+- Session checkout: total = rental total + session snacks total. Cash requires the tendered amount to be ≥ the total and shows the change; QRIS is always exact. After payment the session becomes FINISHED and a receipt is offered for sharing.
+- Cancelling a session restores the stock of all of its snacks, then deletes the session and its snack rows.
+- Direct sales in the Snacks tab: the user raises steppers on several items (capped by stock), then pays for all of them in one dialog (Cash/QRIS). Each item becomes one `SnackSaleEntity` and its stock is decreased.
+- Snacks added to a session decrease stock immediately; lowering the quantity or cancelling the session returns it.
 
-## Preferensi (SharedPreferences `kasir_prefs`)
+## Preferences (SharedPreferences `kasir_prefs`)
 
-| Key | Isi |
+| Key | Meaning |
 |---|---|
-| `dark_theme` | Boolean mode gelap; tidak ada key = ikut sistem |
-| `store_name` | Nama toko di struk dan header tab Lainnya (bawaan "Rental PS") |
+| `dark_theme` | Dark-mode boolean; an absent key follows the system setting |
+| `store_name` | Store name on receipts and in the More tab header (default "Rental PS") |
 
-## Tema & desain
+## Theme & design
 
-- Skema hijau buatan tangan (terang: primary `#146C43`, container `#B7E4C7`; gelap: primary `#7BD88F`, container `#14532D`) di bawah `MaterialExpressiveTheme`.
-- Navigasi memakai **dock melayang** (`FloatingDock`): kapsul `surfaceContainerHigh` berbayangan, tab aktif berupa pil `primary` berisi ikon + label, tab lain ikon saja. Konten tab diberi bantalan bawah 96 dp agar tidak tertutup dock.
-- Bahasa UI: Bahasa Indonesia.
+- Hand-written green schemes (light: primary `#146C43`, container `#B7E4C7`; dark: primary `#7BD88F`, container `#14532D`) under `MaterialExpressiveTheme`.
+- Navigation uses a **floating dock** (`FloatingDock`): a shadowed `surfaceContainerHigh` capsule where the active tab is a solid `primary` pill with icon + label and the other tabs are icon-only. Tab content gets 96 dp of bottom padding so nothing hides behind the dock.
+- UI language: Indonesian.
 
 ## Signing & R8
 
-- Keystore tetap `kasir.p12` (PKCS12) di root repo; `signingConfigs.ci` di `app/build.gradle.kts` memakainya untuk build debug **dan** release, jadi setiap APK CI bertanda tangan sama dan bisa saling menimpa saat dipasang.
-- R8 (`minifyEnabled` + `shrinkResources`) aktif di kedua build type. `app/proguard-rules.pro` menjaga paket `id.kasir.app.data.**` (Room memuat `AppDatabase_Impl`/`KasirDao_Impl` secara reflektif berdasarkan nama) dan atribut `SourceFile`/`LineNumberTable`/`Signature`/anotasi.
+- A fixed keystore `kasir.p12` (PKCS12) sits at the repo root; `signingConfigs.ci` in `app/build.gradle.kts` uses it for both debug **and** release builds, so every CI APK carries the same signature and updates install over older builds.
+- R8 (`minifyEnabled` + `shrinkResources`) is enabled for both build types. `app/proguard-rules.pro` keeps the `id.kasir.app.data.**` package (Room loads `AppDatabase_Impl`/`KasirDao_Impl` reflectively by name) and the `SourceFile`/`LineNumberTable`/`Signature`/annotation attributes.
 
 ## CI (GitHub Actions)
 
-Workflow `.github/workflows/build.yml` bersifat `workflow_dispatch` (dijalankan manual), 7 langkah:
+The `.github/workflows/build.yml` workflow is `workflow_dispatch` (run manually), 7 steps:
 
 1. Checkout
 2. JDK 17 (Temurin)
-3. Install SDK Android 36 + build-tools 36.0.0 lewat `sdkmanager`
-4. Setup Gradle 8.13 (`gradle/actions/setup-gradle@v4`, cache aktif via `org.gradle.caching=true`)
+3. Install Android SDK 36 + build-tools 36.0.0 via `sdkmanager`
+4. Set up Gradle 8.13 (`gradle/actions/setup-gradle@v4`, caching on via `org.gradle.caching=true`)
 5. **Unit tests** — `gradle :app:testDebugUnitTest`
-6. Build debug APK — `gradle assembleDebug`
-7. Upload artifact `app-debug-apk`
+6. Build the debug APK — `gradle assembleDebug`
+7. Upload the `app-debug-apk` artifact
 
-Catatan: selalu mulai **Run workflow** baru; *Re-run jobs* membuild ulang commit lama.
+Note: always start a fresh **Run workflow**; *Re-run jobs* rebuilds the old commit.
 
-## Pengujian
+## Testing
 
-`BillingTest` (JUnit 4, 16 test) menguji logika murni `Billing.kt`: format rupiah & rupiah pendek, pembulatan blok, waktu berlalu termasuk jeda, menit tertagih paket + overtime, biaya sewa kedua mode, sisa waktu paket, dan batas hari/minggu/bulan. Test berjalan di CI pada setiap build.
+`BillingTest` (JUnit 4, 16 tests) covers the pure logic in `Billing.kt`: currency and short-currency formatting, block rounding, elapsed time including pauses, package billable minutes + overtime, rental cost for both modes, remaining package time, and day/week/month bounds. The tests run in CI on every build.
