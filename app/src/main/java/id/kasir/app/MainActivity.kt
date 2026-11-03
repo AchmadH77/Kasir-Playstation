@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +33,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
@@ -57,11 +60,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -134,56 +136,110 @@ private fun KasirApp() {
                         title = { Text(tabTitles[tab], fontWeight = FontWeight.ExtraBold) }
                     )
                 },
-                bottomBar = {
-                    ShortNavigationBar {
-                        ShortNavigationBarItem(
-                            selected = tab == 0,
-                            onClick = { tab = 0 },
-                            icon = { Icon(Icons.Default.SportsEsports, contentDescription = null) },
-                            label = { Text("Unit") }
-                        )
-                        ShortNavigationBarItem(
-                            selected = tab == 1,
-                            onClick = { tab = 1 },
-                            icon = { Icon(Icons.Default.Fastfood, contentDescription = null) },
-                            label = { Text("Jajan") }
-                        )
-                        ShortNavigationBarItem(
-                            selected = tab == 2,
-                            onClick = { tab = 2 },
-                            icon = { Icon(Icons.Default.Assessment, contentDescription = null) },
-                            label = { Text("Laporan") }
-                        )
-                        ShortNavigationBarItem(
-                            selected = tab == 3,
-                            onClick = { tab = 3 },
-                            icon = { Icon(Icons.Default.MoreHoriz, contentDescription = null) },
-                            label = { Text("Lainnya") }
-                        )
-                    }
-                },
-                snackbarHost = { SnackbarHost(snackbar) }
+                snackbarHost = { SnackbarHost(snackbar, modifier = Modifier.padding(bottom = 84.dp)) }
             ) { padding ->
-                AnimatedContent(
-                    targetState = tab,
-                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
-                    modifier = Modifier.padding(padding),
-                    label = "tab"
-                ) { target ->
-                    when (target) {
-                        0 -> UnitTab(dao = dao, notify = notify)
-                        1 -> JajanTab(dao = dao, notify = notify)
-                        2 -> LaporanTab(dao = dao, notify = notify)
-                        else -> LainnyaTab(
-                            dao = dao,
-                            dark = dark,
-                            onDarkChange = { checked ->
-                                darkOverride = checked
-                                prefs.edit().putBoolean("dark_theme", checked).apply()
-                            },
-                            notify = notify,
-                            onOpenUnitManage = { showUnitManage = true }
-                        )
+                Box(
+                    modifier = Modifier
+                        .padding(padding)
+                        .fillMaxSize()
+                ) {
+                    AnimatedContent(
+                        targetState = tab,
+                        transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 96.dp),
+                        label = "tab"
+                    ) { target ->
+                        when (target) {
+                            0 -> UnitTab(dao = dao, notify = notify)
+                            1 -> JajanTab(dao = dao, notify = notify)
+                            2 -> LaporanTab(dao = dao, notify = notify)
+                            else -> LainnyaTab(
+                                dao = dao,
+                                dark = dark,
+                                onDarkChange = { checked ->
+                                    darkOverride = checked
+                                    prefs.edit().putBoolean("dark_theme", checked).apply()
+                                },
+                                notify = notify,
+                                onOpenUnitManage = { showUnitManage = true }
+                            )
+                        }
+                    }
+                    FloatingDock(
+                        selected = tab,
+                        onSelect = { tab = it },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Dock melayang menggantikan NavigationBar: kapsul surfaceContainerHigh
+// dengan bayangan; tab aktif = pil primary (ikon + label), lainnya ikon saja.
+@Composable
+private fun FloatingDock(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val items = listOf(
+        Icons.Default.SportsEsports to "Unit",
+        Icons.Default.Fastfood to "Jajan",
+        Icons.Default.Assessment to "Laporan",
+        Icons.Default.MoreHoriz to "Lainnya"
+    )
+    Surface(
+        shape = RoundedCornerShape(percent = 50),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 8.dp,
+        modifier = modifier
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEachIndexed { index, (icon, label) ->
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (index == selected) {
+                        Surface(
+                            shape = RoundedCornerShape(percent = 50),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { onSelect(index) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    icon,
+                                    contentDescription = label,
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    label,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = { onSelect(index) }) {
+                            Icon(
+                                icon,
+                                contentDescription = label,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
