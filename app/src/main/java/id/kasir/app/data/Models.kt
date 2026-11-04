@@ -1,9 +1,11 @@
 package id.kasir.app.data
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 // Satu unit rental: satu TV + satu konsol.
+@Immutable
 @Entity(tableName = "units")
 data class UnitEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -13,6 +15,7 @@ data class UnitEntity(
 )
 
 // Menu jajan / F&B yang bisa ditambahkan ke tagihan sesi atau dijual langsung.
+@Immutable
 @Entity(tableName = "snacks")
 data class SnackEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -24,6 +27,7 @@ data class SnackEntity(
 // Satu sesi main. Timer dihitung dari startEpoch dikurangi total jeda,
 // jadi tetap akurat walau aplikasi ditutup. Tarif dan nama disalin (snapshot)
 // saat sesi mulai, sehingga perubahan tarif tidak mengubah sesi berjalan.
+@Immutable
 @Entity(tableName = "sessions")
 data class SessionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -47,6 +51,7 @@ data class SessionEntity(
 )
 
 // Jajan yang menempel pada satu sesi (satu baris per jenis jajan).
+@Immutable
 @Entity(tableName = "session_snacks")
 data class SessionSnackEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -58,6 +63,7 @@ data class SessionSnackEntity(
 )
 
 // Penjualan jajan langsung untuk pelanggan yang tidak main.
+@Immutable
 @Entity(tableName = "snack_sales")
 data class SnackSaleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

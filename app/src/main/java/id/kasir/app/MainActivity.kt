@@ -69,6 +69,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -247,24 +248,38 @@ private fun FloatingDock(
     }
 }
 
+/**
+ * A one-second clock owned by whichever composable calls it. Keeping the
+ * ticking state inside the small composables that actually show a timer
+ * (unit rows, the session detail dialog) means only they recompose every
+ * second; the header, the rest of the list, and the tab itself stay idle.
+ * When [active] is false the value never changes and no loop runs.
+ */
+@Composable
+private fun rememberNowMillis(active: Boolean = true): State<Long> {
+    val now = remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(active) {
+        if (active) {
+            while (true) {
+                delay(1000)
+                now.value = System.currentTimeMillis()
+            }
+        }
+    }
+    return now
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
     val units by dao.unitsFlow().collectAsState(initial = emptyList())
     val active by dao.activeSessionsFlow().collectAsState(initial = emptyList())
     val finished by dao.finishedSessionsFlow().collectAsState(initial = emptyList())
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            now = System.currentTimeMillis()
-        }
-    }
     var startUnit by remember { mutableStateOf<UnitEntity?>(null) }
     var detailSessionId by remember { mutableStateOf<Long?>(null) }
     var receiptSession by remember { mutableStateOf<SessionEntity?>(null) }
 
-    val todayStart = startOfDay(now)
+    val todayStart = startOfDay(System.currentTimeMillis())
     val todayIncome = finished.filter { (it.endEpoch ?: 0L) >= todayStart }.sumOf { it.total }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -313,7 +328,6 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
                 UnitRow(
                     unit = unit,
                     session = session,
-                    now = now,
                     onClick = {
                         if (session == null) startUnit = unit else detailSessionId = session.id
                     }
@@ -339,7 +353,6 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
             SessionDetailDialog(
                 dao = dao,
                 session = session,
-                now = now,
                 notify = notify,
                 onDismiss = { detailSessionId = null },
                 onCheckoutDone = { finishedSession ->
@@ -356,7 +369,10 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitRow(unit: UnitEntity, session: SessionEntity?, now: Long, onClick: () -> Unit) {
+private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Unit) {
+    // This row owns its clock: only the row with a running session recomposes
+    // every second, not the whole tab.
+    val now by rememberNowMillis(active = session != null)
     val paused = session?.status == STATUS_PAUSED
     val remaining = if (session != null && session.mode == MODE_PAKET) remainingMillis(session, now) else 0L
     val overtime = session != null && session.mode == MODE_PAKET && remaining < 0
@@ -553,7 +569,6 @@ private fun StartSessionDialog(
 private fun SessionDetailDialog(
     dao: KasirDao,
     session: SessionEntity,
-    now: Long,
     notify: (String) -> Unit,
     onDismiss: () -> Unit,
     onCheckoutDone: (SessionEntity) -> Unit
@@ -565,6 +580,8 @@ private fun SessionDetailDialog(
     var showCheckout by remember { mutableStateOf(false) }
     var confirmVoid by remember { mutableStateOf(false) }
     var showAddTime by remember { mutableStateOf(false) }
+    // The dialog owns its clock (small subtree); the tab behind it stays idle.
+    val now by rememberNowMillis()
     val snackTotal = sessionSnacks.sumOf { it.price * it.qty }
     val rental = rentalCost(session, now)
     val paused = session.status == STATUS_PAUSED
@@ -829,7 +846,6 @@ private fun SessionDetailDialog(
             dao = dao,
             session = session,
             sessionSnacks = sessionSnacks,
-            now = now,
             onDismiss = { showCheckout = false },
             onDone = { finished -> onCheckoutDone(finished) }
         )
@@ -926,13 +942,14 @@ private fun CheckoutDialog(
     dao: KasirDao,
     session: SessionEntity,
     sessionSnacks: List<SessionSnackEntity>,
-    now: Long,
     onDismiss: () -> Unit,
     onDone: (SessionEntity) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var method by remember { mutableStateOf(PAY_TUNAI) }
     var paidText by remember { mutableStateOf("") }
+    // Frozen at open: the bill must not tick up while payment is being taken.
+    val now = remember { System.currentTimeMillis() }
 
     val billable = billableMinutes(session, now)
     val rentalGross = rentalCost(session, now)
