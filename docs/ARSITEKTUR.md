@@ -13,12 +13,12 @@ This document summarizes the technical decisions behind Kasir (a PlayStation ren
 
 | Component | Version / notes |
 |---|---|
-| Kotlin | 2.2.20 |
-| Compose BOM | 2025.10.00 |
-| Material 3 | 1.5.0-alpha08 (`MaterialExpressiveTheme`, `MotionScheme.expressive`) |
-| AGP / Gradle | 8.11.1 / 8.13 (JDK 17) |
-| Room | 2.7.2 via KSP 2.2.20-2.0.4 |
-| Android | minSdk 26, targetSdk 34, compileSdk 36 |
+| Kotlin | 2.4.10 |
+| Compose BOM | 2026.09.00 |
+| Material 3 | 1.5.0-beta02 (`MaterialExpressiveTheme`, `MotionScheme.expressive`) |
+| AGP / Gradle | 9.1.1 / 9.3.1 (JDK 17) |
+| Room | 2.7.2 via KSP 2.3.9 |
+| Android | minSdk 26, targetSdk 36, compileSdk 37 |
 | Package | `id.kasir.app`, version 1.0.0 (code 1) |
 
 ## Code structure
@@ -84,8 +84,8 @@ The `.github/workflows/build.yml` workflow is `workflow_dispatch` (run manually)
 
 1. Checkout
 2. JDK 17 (Temurin)
-3. Install Android SDK 36 + build-tools 36.0.0 via `sdkmanager`
-4. Set up Gradle 8.13 (`gradle/actions/setup-gradle@v4`, caching on via `org.gradle.caching=true`)
+3. Install Android SDK 37 (`platforms;android-37.0`) + build-tools 36.0.0 via `sdkmanager`
+4. Set up Gradle 9.3.1 (`gradle/actions/setup-gradle@v4`, caching on via `org.gradle.caching=true`)
 5. **Unit tests** — `gradle :app:testDebugUnitTest`
 6. Build the debug APK — `gradle assembleDebug`
 7. Upload the `app-debug-apk` artifact

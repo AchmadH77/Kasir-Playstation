@@ -21,11 +21,11 @@ On first launch the app is seeded with sample data (6 TV units and 6 snack menu 
 
 | | |
 |---|---|
-| Language | Kotlin 2.2.20 |
-| UI | Jetpack Compose (BOM 2025.10.00), Material3 1.5.0-alpha08 (MaterialExpressiveTheme) |
-| Database | Room 2.7.2 (KSP 2.2.20-2.0.4), fully offline |
-| Build | AGP 8.11.1, Gradle 8.13, JDK 17 |
-| Android | minSdk 26 (Android 8.0), targetSdk 34, compileSdk 36 |
+| Language | Kotlin 2.4.10 |
+| UI | Jetpack Compose (BOM 2026.09.00), Material3 1.5.0-beta02 (MaterialExpressiveTheme) |
+| Database | Room 2.7.2 (KSP 2.3.9), fully offline |
+| Build | AGP 9.1.1, Gradle 9.3.1, JDK 17 |
+| Android | minSdk 26 (Android 8.0), targetSdk 36, compileSdk 37 |
 | Package | `id.kasir.app` |
 | Version | 1.0.0 |
 | Signing | A fixed keystore in the repo (`kasir.p12`, PKCS12) — every CI build uses the same signature, so updates install over older versions |
