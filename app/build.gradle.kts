@@ -101,4 +101,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
 
     testImplementation("junit:junit:4.13.2")
+    // org.json asli untuk tes unit BackupHelper (di perangkat, org.json bawaan Android).
+    testImplementation("org.json:json:20240303")
 }

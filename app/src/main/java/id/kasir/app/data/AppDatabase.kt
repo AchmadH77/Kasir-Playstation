@@ -99,6 +99,36 @@ interface KasirDao {
     @Insert
     suspend fun insertSnackSale(sale: SnackSaleEntity): Long
 
+    // Backup & restore: baca semua baris sekaligus dan kosongkan tabel.
+    @Query("SELECT * FROM units")
+    suspend fun allUnitsOnce(): List<UnitEntity>
+
+    @Query("SELECT * FROM snacks")
+    suspend fun allSnacksOnce(): List<SnackEntity>
+
+    @Query("SELECT * FROM sessions")
+    suspend fun allSessionsOnce(): List<SessionEntity>
+
+    @Query("SELECT * FROM session_snacks")
+    suspend fun allSessionSnacksOnce(): List<SessionSnackEntity>
+
+    @Query("SELECT * FROM snack_sales")
+    suspend fun allSnackSalesOnce(): List<SnackSaleEntity>
+
+    @Query("DELETE FROM session_snacks")
+    suspend fun clearSessionSnacks()
+
+    @Query("DELETE FROM snack_sales")
+    suspend fun clearSnackSales()
+
+    @Query("DELETE FROM sessions")
+    suspend fun clearSessions()
+
+    @Query("DELETE FROM snacks")
+    suspend fun clearSnacks()
+
+    @Query("DELETE FROM units")
+    suspend fun clearUnits()
 }
 
 @Database(

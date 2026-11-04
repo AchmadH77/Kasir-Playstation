@@ -3,6 +3,8 @@ package id.kasir.app
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -80,8 +82,17 @@ import id.kasir.app.data.SessionEntity
 import id.kasir.app.data.SessionSnackEntity
 import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.SnackSaleEntity
+import id.kasir.app.data.BackupData
+import id.kasir.app.data.DatabaseProvider
 import id.kasir.app.data.UnitEntity
+import id.kasir.app.data.applyBackup
+import id.kasir.app.data.backupFileName
+import id.kasir.app.data.backupToJson
+import id.kasir.app.data.collectBackup
+import id.kasir.app.data.parseBackup
 import java.util.Calendar
+import androidx.core.content.FileProvider
+import java.io.File
 import kotlinx.coroutines.launch
 
 // ---------- Struk ----------
@@ -173,6 +184,98 @@ fun ReceiptDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) 
             }
         }
     }
+}
+
+// Menulis berkas teks ke cache lalu membukanya di lembar bagikan Android:
+// dipakai backup JSON (tab Lainnya) dan ekspor laporan CSV (tab Laporan).
+private fun shareTextFile(
+    context: Context,
+    fileName: String,
+    content: String,
+    mimeType: String,
+    chooserTitle: String
+) {
+    val file = File(context.cacheDir, fileName)
+    file.writeText(content)
+    val uri = FileProvider.getUriForFile(
+        context,
+        context.packageName + ".fileprovider",
+        file
+    )
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = mimeType
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, chooserTitle))
+}
+
+private fun csvCell(value: String): String =
+    if (value.any { it == ';' || it == '"' || it == '\n' }) {
+        "\"" + value.replace("\"", "\"\"") + "\""
+    } else {
+        value
+    }
+
+// Laporan satu periode sebagai CSV (pemisah ";", angka mentah) supaya
+// langsung rapi dibuka di Excel/Sheets dan gampang dibagikan.
+fun laporanCsv(
+    storeName: String,
+    periodLabel: String,
+    generatedAtMillis: Long,
+    grandTotal: Long,
+    sessionTotal: Long,
+    salesTotal: Long,
+    byUnit: List<Pair<Triple<String, Int, Int>, Long>>,
+    sessions: List<SessionEntity>,
+    sales: List<SnackSaleEntity>
+): String {
+    val sb = StringBuilder()
+    sb.appendLine(csvCell(storeName))
+    sb.appendLine("Laporan Kasir - " + periodLabel)
+    sb.appendLine("Dibuat;" + formatDateTime(generatedAtMillis))
+    sb.appendLine()
+    sb.appendLine("RINGKASAN")
+    sb.appendLine("Total Pendapatan;" + grandTotal)
+    sb.appendLine("Sewa & Sesi;" + sessionTotal)
+    sb.appendLine("Jajan Langsung;" + salesTotal)
+    sb.appendLine()
+    sb.appendLine("PER UNIT")
+    sb.appendLine("Unit;Sesi;Durasi (menit);Pendapatan")
+    byUnit.forEach { (info, revenue) ->
+        sb.appendLine(
+            csvCell(info.first) + ";" + info.second + ";" + info.third + ";" + revenue
+        )
+    }
+    sb.appendLine()
+    sb.appendLine("RIWAYAT SESI")
+    sb.appendLine("Tanggal Selesai;Unit;Konsol;Mode;Durasi (menit);Sewa;Jajan di Sesi;Total;Metode")
+    sessions.forEach { session ->
+        val end = session.endEpoch ?: session.startEpoch
+        val modeLabel = if (session.mode == MODE_PAKET) {
+            "Paket " + formatMinutes(session.paketMinutes)
+        } else {
+            "Open"
+        }
+        sb.appendLine(
+            formatDateTime(end) + ";" + csvCell(session.unitName) + ";" +
+                csvCell(session.consoleType) + ";" + modeLabel + ";" +
+                billedMinutes(session, end) + ";" + session.rentalCost + ";" +
+                session.snackCost + ";" + session.total + ";" +
+                (session.paymentMethod ?: "-")
+        )
+    }
+    sb.appendLine()
+    sb.appendLine("PENJUALAN JAJAN LANGSUNG")
+    sb.appendLine("Waktu;Item;Qty;Harga Satuan;Total;Metode")
+    sales.forEach { sale ->
+        sb.appendLine(
+            formatDateTime(sale.epoch) + ";" + csvCell(sale.snackName) + ";" +
+                sale.qty + ";" + sale.price + ";" + sale.total + ";" +
+                sale.paymentMethod
+        )
+    }
+    return sb.toString()
 }
 
 // ---------- Tab Jajan ----------
@@ -636,6 +739,9 @@ private fun SnackFormDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE) }
+    val storeName = prefs.getString("store_name", "Rental PS") ?: "Rental PS"
     val finished by dao.finishedSessionsFlow().collectAsState(initial = emptyList())
     val sales by dao.snackSalesFlow().collectAsState(initial = emptyList())
     var period by remember { mutableIntStateOf(0) }
@@ -778,6 +884,36 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+        OutlinedButton(
+            onClick = {
+                val label = listOf("Hari Ini", "Minggu Ini", "Bulan Ini", "Semua")[period]
+                shareTextFile(
+                    context = context,
+                    fileName = "laporan-kasir-" + label.lowercase().replace(" ", "-") + ".csv",
+                    content = laporanCsv(
+                        storeName = storeName,
+                        periodLabel = label,
+                        generatedAtMillis = System.currentTimeMillis(),
+                        grandTotal = grandTotal,
+                        sessionTotal = sessionTotal,
+                        salesTotal = salesTotal,
+                        byUnit = byUnit,
+                        sessions = periodSessions,
+                        sales = periodSales
+                    ),
+                    mimeType = "text/csv",
+                    chooserTitle = "Bagikan Laporan"
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 10.dp)
+        ) {
+            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Ekspor Laporan")
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -1023,6 +1159,28 @@ fun LainnyaTab(
     var showStoreDialog by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     val units by dao.unitsFlow().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    var pendingRestore by remember { mutableStateOf<BackupData?>(null) }
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val parsed = try {
+                    val text = context.contentResolver.openInputStream(uri)
+                        ?.bufferedReader()?.readText()
+                    if (text == null) null else parseBackup(text)
+                } catch (e: Exception) {
+                    null
+                }
+                if (parsed != null) {
+                    pendingRestore = parsed
+                } else {
+                    notify("Berkas backup tidak valid")
+                }
+            }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1114,6 +1272,51 @@ fun LainnyaTab(
             )
             HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
             ListItem(
+                headlineContent = { Text("Backup Data") },
+                supportingContent = { Text("Simpan semua data ke satu berkas") },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Backup,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable {
+                    scope.launch {
+                        val data = collectBackup(dao, System.currentTimeMillis())
+                        shareTextFile(
+                            context = context,
+                            fileName = backupFileName(data.exportedAtMillis),
+                            content = backupToJson(data),
+                            mimeType = "application/json",
+                            chooserTitle = "Bagikan Backup Kasir"
+                        )
+                    }
+                }
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
+            ListItem(
+                headlineContent = { Text("Restore Data") },
+                supportingContent = { Text("Pulihkan data dari berkas backup") },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.SettingsBackupRestore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable {
+                    restoreLauncher.launch(arrayOf("application/json"))
+                }
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
+            ListItem(
                 headlineContent = { Text("Mode Gelap") },
                 leadingContent = {
                     Icon(
@@ -1184,7 +1387,7 @@ fun LainnyaTab(
             text = {
                 Text(
                     "Kasir rental PlayStation versi 1.0.0.\n\n" +
-                        "Fitur: billing per unit dengan mode Paket dan Open Billing, " +
+                        "Fitur: billing per unit dengan paket berharga manual, " +
                         "timer akurat dari waktu mulai, jajan menyatu di tagihan sesi, " +
                         "laporan pendapatan, " +
                         "serta struk yang bisa dibagikan. Semua data tersimpan lokal di HP."
@@ -1192,6 +1395,32 @@ fun LainnyaTab(
             },
             confirmButton = {
                 TextButton(onClick = { showAbout = false }) { Text("Tutup") }
+            }
+        )
+    }
+    pendingRestore?.let { data ->
+        AlertDialog(
+            onDismissRequest = { pendingRestore = null },
+            title = { Text("Restore Data?") },
+            text = {
+                Text(
+                    "Backup dari " + formatDateTime(data.exportedAtMillis) + " berisi " +
+                        data.units.size + " unit, " + data.sessions.size + " sesi, dan " +
+                        data.snackSales.size + " penjualan jajan.\n\n" +
+                        "Semua data yang sekarang ada akan diganti dengan isi backup ini."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    scope.launch {
+                        applyBackup(DatabaseProvider.get(context), data)
+                        pendingRestore = null
+                        notify("Data berhasil dipulihkan")
+                    }
+                }) { Text("Restore") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRestore = null }) { Text("Batal") }
             }
         )
     }
