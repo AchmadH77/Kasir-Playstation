@@ -697,22 +697,85 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             }
         }
-        Card(
+        // L5 - Kartu Berdampingan: sewa (hijau) dan jajan (oranye) jadi dua
+        // kartu besar; total pendapatan jadi baris ringkasan di bawahnya.
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Sewa & sesi", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        formatRupiah(sessionTotal),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Text(
+                        periodSessions.size.toString() + " sesi selesai",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF4A2C14),
+                    contentColor = Color(0xFFFFD9B0)
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("Jajan langsung", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        formatRupiah(salesTotal),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                    Text(
+                        periodSales.size.toString() + " penjualan",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 10.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             )
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Total Pendapatan", style = MaterialTheme.typography.labelLarge)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Total Pendapatan",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.weight(1f))
                 Text(
                     formatRupiah(grandTotal),
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.padding(top = 2.dp)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
