@@ -37,6 +37,7 @@ data class SessionEntity(
     val hourlyRate: Long,
     val mode: String,
     val paketMinutes: Int = 0,
+    val paketPrice: Long = 0,
     val startEpoch: Long,
     val pausedMillis: Long = 0,
     val pauseStartEpoch: Long? = null,

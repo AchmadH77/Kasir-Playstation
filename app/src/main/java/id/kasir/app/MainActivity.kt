@@ -485,89 +485,81 @@ private fun StartSessionDialog(
     onDismiss: () -> Unit,
     onStarted: () -> Unit
 ) {
-    var mode by remember { mutableStateOf(MODE_PAKET) }
     var paket by remember { mutableIntStateOf(120) }
+    var priceText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val price = priceText.toLongOrNull() ?: 0L
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Mulai Sesi - " + unit.name) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    unit.consoleType + " - " + formatRupiah(effectiveRate(unit)) + " / jam",
+                    unit.consoleType,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                SingleChoiceSegmentedButtonRow(
+                Text(
+                    "Durasi paket",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+                Column(
+                    modifier = Modifier.padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PAKET_OPTIONS.chunked(3).forEach { rowOptions ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowOptions.forEach { m ->
+                                FilterChip(
+                                    selected = paket == m,
+                                    onClick = { paket = m },
+                                    label = { Text(formatMinutes(m)) }
+                                )
+                            }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = priceText,
+                    onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
+                    label = { Text("Harga paket (Rp)") },
+                    placeholder = { Text("mis. 10000") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 14.dp)
-                ) {
-                    SegmentedButton(
-                        selected = mode == MODE_PAKET,
-                        onClick = { mode = MODE_PAKET },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        label = { Text("Paket") }
-                    )
-                    SegmentedButton(
-                        selected = mode == MODE_OPEN,
-                        onClick = { mode = MODE_OPEN },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        label = { Text("Open") }
-                    )
-                }
-                if (mode == MODE_PAKET) {
-                    Text(
-                        "Durasi paket",
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
-                    Row(
-                        modifier = Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        PAKET_OPTIONS.forEach { m ->
-                            FilterChip(
-                                selected = paket == m,
-                                onClick = { paket = m },
-                                label = { Text(formatMinutes(m)) }
-                            )
-                        }
-                    }
-                    Text(
-                        "Harga paket: " + formatRupiah(unit.hourlyRate * paket / 60),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                } else {
-                    Text(
-                        "Open billing: timer jalan terus, ditagih per blok 10 menit saat stop.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                }
+                )
+                Text(
+                    "Harga diisi manual dan tetap: lewat dari durasi paket tidak menambah biaya.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         },
         confirmButton = {
-            Button(onClick = {
-                scope.launch {
-                    dao.insertSession(
-                        SessionEntity(
-                            unitId = unit.id,
-                            unitName = unit.name,
-                            consoleType = unit.consoleType,
-                            hourlyRate = effectiveRate(unit),
-                            mode = mode,
-                            paketMinutes = if (mode == MODE_PAKET) paket else 0,
-                            startEpoch = System.currentTimeMillis()
+            Button(
+                enabled = price > 0,
+                onClick = {
+                    scope.launch {
+                        dao.insertSession(
+                            SessionEntity(
+                                unitId = unit.id,
+                                unitName = unit.name,
+                                consoleType = unit.consoleType,
+                                hourlyRate = effectiveRate(unit),
+                                mode = MODE_PAKET,
+                                paketMinutes = paket,
+                                paketPrice = price,
+                                startEpoch = System.currentTimeMillis()
+                            )
                         )
-                    )
-                    onStarted()
+                        onStarted()
+                    }
                 }
-            }) { Text("Mulai") }
+            ) { Text("Mulai") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Batal") }
@@ -962,7 +954,7 @@ private fun CheckoutDialog(
     // Frozen at open: the bill must not tick up while payment is being taken.
     val now = remember { System.currentTimeMillis() }
 
-    val billable = billableMinutes(session, now)
+    val billable = billedMinutes(session, now)
     val rentalGross = rentalCost(session, now)
     val snackTotal = sessionSnacks.sumOf { it.price * it.qty }
     val total = rentalGross + snackTotal

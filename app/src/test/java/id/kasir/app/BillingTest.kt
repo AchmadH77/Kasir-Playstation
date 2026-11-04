@@ -15,6 +15,7 @@ class BillingTest {
         mode: String = MODE_OPEN,
         paketMinutes: Int = 0,
         hourlyRate: Long = 6000,
+        paketPrice: Long = 0,
         startEpoch: Long = 0,
         pausedMillis: Long = 0,
         pauseStartEpoch: Long? = null,
@@ -27,6 +28,7 @@ class BillingTest {
         hourlyRate = hourlyRate,
         mode = mode,
         paketMinutes = paketMinutes,
+        paketPrice = paketPrice,
         startEpoch = startEpoch,
         pausedMillis = pausedMillis,
         pauseStartEpoch = pauseStartEpoch,
@@ -185,5 +187,20 @@ class BillingTest {
         assertEquals(10_000L, effectiveRate(ps5))
         val unknown = UnitEntity(name = "TV 10", consoleType = "PS2", hourlyRate = 7_000L)
         assertEquals(7_000L, effectiveRate(unknown))
+    }
+
+    @Test
+    fun manualPaketPriceIsFlatEvenIntoOvertime() {
+        val s = session(mode = MODE_PAKET, paketMinutes = 120, paketPrice = 12_000L)
+        assertEquals(12_000L, rentalCost(s, 60 * min))
+        assertEquals(12_000L, rentalCost(s, 300 * min))
+        assertEquals(120, billedMinutes(s, 300 * min))
+    }
+
+    @Test
+    fun zeroPaketPriceKeepsRateBasedBilling() {
+        val s = session(mode = MODE_PAKET, paketMinutes = 120, hourlyRate = 6_000L)
+        assertEquals(12_000L, rentalCost(s, 120 * min))
+        assertEquals(120, billedMinutes(s, 120 * min))
     }
 }

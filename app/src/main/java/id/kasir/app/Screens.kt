@@ -92,7 +92,7 @@ fun receiptText(
     snacks: List<SessionSnackEntity>
 ): String {
     val end = session.endEpoch ?: session.startEpoch
-    val billed = billableMinutes(session, end)
+    val billed = billedMinutes(session, end)
     val modeLabel = if (session.mode == MODE_PAKET) {
         "Paket " + formatMinutes(session.paketMinutes)
     } else {

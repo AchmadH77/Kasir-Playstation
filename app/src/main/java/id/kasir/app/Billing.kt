@@ -96,9 +96,18 @@ fun billableMinutes(session: SessionEntity, now: Long): Int {
     }
 }
 
-// Biaya sewa kotor pada waktu tertentu.
-fun rentalCost(session: SessionEntity, now: Long): Long =
-    session.hourlyRate * billableMinutes(session, now) / 60
+// Biaya sewa kotor pada waktu tertentu. Sesi paket berharga manual
+// (paketPrice > 0) selalu ditagih sebesar harga yang diketik saat mulai:
+// flat, tidak bertambah walau lewat dari durasi paketnya.
+fun rentalCost(session: SessionEntity, now: Long): Long {
+    if (session.paketPrice > 0L) return session.paketPrice
+    return session.hourlyRate * billableMinutes(session, now) / 60
+}
+
+// Menit yang ditampilkan sebagai durasi tertagih: untuk sesi berharga
+// manual selalu durasi paketnya, bukan hasil hitungan blok.
+fun billedMinutes(session: SessionEntity, now: Long): Int =
+    if (session.paketPrice > 0L) session.paketMinutes else billableMinutes(session, now)
 
 fun remainingMillis(session: SessionEntity, now: Long): Long =
     session.paketMinutes * 60000L - elapsedMillis(session, now)
