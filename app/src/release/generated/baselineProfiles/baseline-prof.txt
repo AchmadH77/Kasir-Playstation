@@ -1,0 +1,22 @@
+# Baseline profile for Kasir, hand-authored in HRF (human-readable format).
+# It covers the cold-start path and the hot path of the Unit tab, the app's
+# main screen: activity creation, the theme, the billing maths, and the
+# Room database open + seed path. Library profiles shipped inside the
+# Compose and Room artifacts are merged automatically alongside this file.
+HSPLid/kasir/app/MainActivity;->onCreate(Landroid/os/Bundle;)V
+Lid/kasir/app/MainActivity;
+Lid/kasir/app/MainActivityKt;
+Lid/kasir/app/ScreensKt;
+Lid/kasir/app/ThemeKt;
+Lid/kasir/app/BillingKt;
+Lid/kasir/app/data/AppDatabase;
+Lid/kasir/app/data/AppDatabase_Impl;
+Lid/kasir/app/data/KasirDao;
+Lid/kasir/app/data/KasirDao_Impl;
+Lid/kasir/app/data/DatabaseProvider;
+Lid/kasir/app/data/SeedData;
+Lid/kasir/app/data/UnitEntity;
+Lid/kasir/app/data/SnackEntity;
+Lid/kasir/app/data/SessionEntity;
+Lid/kasir/app/data/SessionSnackEntity;
+Lid/kasir/app/data/SnackSaleEntity;

@@ -4,6 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    id("androidx.baselineprofile")
 }
 
 // AGP 9 has built-in Kotlin support, so the org.jetbrains.kotlin.android
@@ -78,6 +79,9 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
+    // Applies the shipped baseline profile at install time on API < 31 and
+    // provides the profile installer the profile tooling expects.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("androidx.activity:activity-compose:1.12.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
 
