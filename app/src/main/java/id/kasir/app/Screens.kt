@@ -54,6 +54,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -136,12 +137,44 @@ fun receiptText(
 }
 
 @Composable
+// Petak info kecil untuk struk S6: label mungil di atas, nilai tebal.
+@Composable
+private fun ReceiptInfoTile(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
 fun ReceiptDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) {
     val snacks by dao.sessionSnacksFlow(session.id).collectAsState(initial = emptyList())
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE) }
     val storeName = prefs.getString("store_name", "Rental PS") ?: "Rental PS"
     val text = receiptText(storeName, session, snacks)
+    val end = session.endEpoch ?: session.startEpoch
+    val modeLabel = if (session.mode == MODE_PAKET) {
+        "Paket " + formatMinutes(session.paketMinutes)
+    } else {
+        "Open billing"
+    }
     Dialog(onDismissRequest = onDismiss) {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
@@ -155,33 +188,180 @@ fun ReceiptDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) 
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(top = 12.dp)
+                    storeName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
+                // S6 - Grid Ringkas: empat info utama jadi petak 2x2, total
+                // dalam pita hijau tua, tombol bertumpuk. Teks bagikan tetap
+                // dari receiptText seperti sebelumnya.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp),
+                        .padding(top = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, text)
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Bagikan struk"))
-                        },
-                        modifier = Modifier.weight(1f)
+                    ReceiptInfoTile(
+                        "UNIT",
+                        session.unitName + " (" + session.consoleType + ")",
+                        Modifier.weight(1f)
+                    )
+                    ReceiptInfoTile("MODE", modeLabel, Modifier.weight(1f))
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ReceiptInfoTile(
+                        "MULAI",
+                        formatDateTime(session.startEpoch),
+                        Modifier.weight(1f)
+                    )
+                    ReceiptInfoTile("SELESAI", formatDateTime(end), Modifier.weight(1f))
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Text(
+                        "Sewa",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        formatRupiah(session.rentalCost),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                snacks.forEach { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null)
-                        Text("Bagikan", modifier = Modifier.padding(start = 6.dp))
+                        Text(
+                            item.snackName + " x" + item.qty,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            formatRupiah(item.price * item.qty),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
-                    Button(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text("Tutup")
+                }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF123D26),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "TOTAL",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            formatRupiah(session.total),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Bayar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        formatRupiah(session.paidAmount),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            session.paymentMethod ?: "-",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                if (session.changeAmount > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                    ) {
+                        Text(
+                            "Kembali",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            formatRupiah(session.changeAmount),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                Text(
+                    "Terima kasih sudah bermain!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 14.dp)
+                )
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) { Text("Tutup") }
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Bagikan struk"))
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("Bagikan Struk", modifier = Modifier.padding(start = 6.dp))
                 }
             }
         }
