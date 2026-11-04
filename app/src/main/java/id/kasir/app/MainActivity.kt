@@ -422,7 +422,7 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
                 )
                 Text(
                     when {
-                        session == null -> formatRupiah(effectiveRate(unit)) + " / jam"
+                        session == null -> formatRupiah(effectiveRate(unit))
                         paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
                         session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes)
@@ -583,6 +583,9 @@ private fun SessionDetailDialog(
     var showCheckout by remember { mutableStateOf(false) }
     var confirmVoid by remember { mutableStateOf(false) }
     var showAddTime by remember { mutableStateOf(false) }
+    var addMinutes by remember { mutableIntStateOf(60) }
+    var addPriceText by remember { mutableStateOf("") }
+    val addPrice = addPriceText.toLongOrNull() ?: 0L
     // The dialog owns its clock (small subtree); the tab behind it stays idle.
     val now by rememberNowMillis()
     val snackTotal = sessionSnacks.sumOf { it.price * it.qty }
@@ -790,27 +793,64 @@ private fun SessionDetailDialog(
                     }
                 }
                 if (showAddTime && session.mode == MODE_PAKET) {
-                    Row(
-                        modifier = Modifier.padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(30, 60, 120).forEach { add ->
-                            FilterChip(
-                                selected = false,
-                                onClick = {
-                                    scope.launch {
-                                        dao.updateSession(
-                                            session.copy(
-                                                paketMinutes = session.paketMinutes + add
-                                            )
-                                        )
-                                        notify("Waktu ditambah " + formatMinutes(add))
-                                    }
-                                    showAddTime = false
-                                },
-                                label = { Text("+" + formatMinutes(add)) }
-                            )
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                        // Template durasi + nominal manual: harga paket
+                        // bertambah sebesar yang diketik, tidak dihitung
+                        // dari tarif per jam.
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(30, 60, 120).forEach { add ->
+                                FilterChip(
+                                    selected = addMinutes == add,
+                                    onClick = { addMinutes = add },
+                                    label = { Text("+" + formatMinutes(add)) }
+                                )
+                            }
                         }
+                        OutlinedTextField(
+                            value = addPriceText,
+                            onValueChange = { v ->
+                                addPriceText = v.filter { c -> c.isDigit() }
+                            },
+                            label = { Text("Harga tambahan (Rp)") },
+                            placeholder = { Text("Tulis nominalnya") },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number
+                            ),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                        )
+                        Button(
+                            enabled = addPrice > 0,
+                            onClick = {
+                                scope.launch {
+                                    // Sesi lama tanpa harga manual: kunci
+                                    // dulu biaya berjalannya sebagai dasar.
+                                    val base = if (session.paketPrice > 0) {
+                                        session.paketPrice
+                                    } else {
+                                        rentalCost(session, now)
+                                    }
+                                    dao.updateSession(
+                                        session.copy(
+                                            paketMinutes = session.paketMinutes + addMinutes,
+                                            paketPrice = base + addPrice
+                                        )
+                                    )
+                                    notify(
+                                        "Waktu ditambah " + formatMinutes(addMinutes) +
+                                            " - harga paket sekarang " +
+                                            formatRupiah(base + addPrice)
+                                    )
+                                }
+                                showAddTime = false
+                                addPriceText = ""
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                        ) { Text("Tambah") }
                     }
                 }
                 Button(

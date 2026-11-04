@@ -1482,7 +1482,7 @@ fun UnitManageScreen(dao: KasirDao, notify: (String) -> Unit, onBack: () -> Unit
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                unit.consoleType + " - " + formatRupiah(effectiveRate(unit)) + " / jam" +
+                                unit.consoleType +
                                     if (inUse) " - sedang dipakai" else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1537,7 +1537,7 @@ private fun UnitFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    "Jenis konsol & tarifnya",
+                    "Jenis konsol",
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(top = 14.dp)
                 )
@@ -1579,16 +1579,6 @@ private fun UnitFormDialog(
                                         MaterialTheme.colorScheme.onPrimaryContainer
                                     } else {
                                         MaterialTheme.colorScheme.onSurface
-                                    }
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    formatRupiah(hourlyRateFor(type)) + " / jam",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (typeSelected) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
                             }
