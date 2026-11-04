@@ -33,7 +33,7 @@ On first launch the app is seeded with sample data (6 TV units and 6 snack menu 
 
 ## Building the APK
 
-**Without a computer (GitHub Actions):** open the **Actions** tab of this repo → the **Build APK** workflow → **Run workflow** on branch `main` → download the **`app-debug-apk`** artifact → install it on the phone. The workflow runs the unit tests before building. (Always start a fresh run; re-running an old run rebuilds that old commit.)
+**Without a computer (GitHub Actions):** open the **Actions** tab of this repo → the **Build APK** workflow → **Run workflow** on branch `main` → download the **`app-release-apk`** artifact → install it on the phone (an `app-debug-apk` is also produced). The workflow runs the unit tests before building, and the release build embeds a baseline profile for faster startup. (Always start a fresh run; re-running an old run rebuilds that old commit.)
 
 **With Android Studio:** open this repo folder, wait for Gradle Sync, then Build APK.
 

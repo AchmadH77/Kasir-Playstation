@@ -80,7 +80,7 @@ Prices are always stored as snapshots on the transaction rows, so changing a men
 
 ## CI (GitHub Actions)
 
-The `.github/workflows/build.yml` workflow is `workflow_dispatch` (run manually), 7 steps:
+The `.github/workflows/build.yml` workflow is `workflow_dispatch` (run manually), 9 steps:
 
 1. Checkout
 2. JDK 17 (Temurin)
@@ -88,7 +88,9 @@ The `.github/workflows/build.yml` workflow is `workflow_dispatch` (run manually)
 4. Set up Gradle 9.3.1 (`gradle/actions/setup-gradle@v4`, caching on via `org.gradle.caching=true`)
 5. **Unit tests** — `gradle :app:testDebugUnitTest`
 6. Build the debug APK — `gradle assembleDebug`
-7. Upload the `app-debug-apk` artifact
+7. Build the release APK — `gradle assembleRelease` (embeds the baseline profile from `app/src/release/generated/baselineProfiles/baseline-prof.txt`, so hot code paths are compiled at install time)
+8. Upload the `app-debug-apk` artifact
+9. Upload the `app-release-apk` artifact — the build to install for daily use
 
 Note: always start a fresh **Run workflow**; *Re-run jobs* rebuilds the old commit.
 
