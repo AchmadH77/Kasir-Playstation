@@ -678,37 +678,70 @@ private fun BatchSellDialog(
         title = { Text("Jual Jajan") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // B2: baris item memakai petak inisial berwarna yang sama
+                // dengan daftar jajan (warna stabil dari nama menu).
                 items.forEach { (snack, qty) ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    snackTileColor(snack.name),
+                                    RoundedCornerShape(10.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                snack.name.firstOrNull()?.uppercase() ?: "?",
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         Text(
                             snack.name + " x" + qty,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 10.dp)
                         )
+                        Spacer(modifier = Modifier.weight(1f))
                         Text(
                             formatRupiah(snack.price * qty),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
-                Row(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(top = 12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF123D26),
+                        contentColor = Color.White
+                    )
                 ) {
-                    Text(
-                        "Total",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        formatRupiah(total),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "TOTAL",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            formatRupiah(total),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
                 }
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier
