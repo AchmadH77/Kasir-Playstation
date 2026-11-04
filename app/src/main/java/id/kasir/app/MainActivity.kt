@@ -124,7 +124,7 @@ private fun KasirApp() {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val notify: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
-    val tabTitles = listOf("Unit", "Jajan", "Laporan", "Lainnya")
+    val tabTitles = listOf("Unit", "Makanan", "Laporan", "Lainnya")
 
     LaunchedEffect(Unit) { SeedData.ensure(dao) }
 
@@ -191,7 +191,7 @@ private fun FloatingDock(
 ) {
     val items = listOf(
         Icons.Default.SportsEsports to "Unit",
-        Icons.Default.Fastfood to "Jajan",
+        Icons.Default.Fastfood to "Makanan",
         Icons.Default.Assessment to "Laporan",
         Icons.Default.MoreHoriz to "Lainnya"
     )
@@ -653,7 +653,7 @@ private fun SessionDetailDialog(
                         .padding(top = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Jajan", style = MaterialTheme.typography.bodyMedium)
+                    Text("Makanan", style = MaterialTheme.typography.bodyMedium)
                     Text(formatRupiah(snackTotal), style = MaterialTheme.typography.bodyMedium)
                 }
                 Row(
@@ -675,13 +675,13 @@ private fun SessionDetailDialog(
                 }
 
                 Text(
-                    "Jajan di sesi ini",
+                    "Makanan di sesi ini",
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(top = 18.dp)
                 )
                 if (sessionSnacks.isEmpty()) {
                     Text(
-                        "Belum ada jajan.",
+                        "Belum ada makanan.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -735,7 +735,7 @@ private fun SessionDetailDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 10.dp)
-                ) { Text("Tambah Jajan") }
+                ) { Text("Tambah Makanan") }
 
                 Row(
                     modifier = Modifier
@@ -897,7 +897,7 @@ private fun SessionDetailDialog(
         AlertDialog(
             onDismissRequest = { confirmVoid = false },
             title = { Text("Batalkan sesi ini?") },
-            text = { Text("Sesi dihapus dan stok jajan yang sudah ditambahkan dikembalikan.") },
+            text = { Text("Sesi dihapus dan stok makanan yang sudah ditambahkan dikembalikan.") },
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
@@ -924,11 +924,11 @@ private fun AddSnackDialog(dao: KasirDao, session: SessionEntity, onDismiss: () 
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Tambah Jajan") },
+        title = { Text("Tambah Makanan") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 if (snacks.isEmpty()) {
-                    Text("Menu jajan masih kosong.")
+                    Text("Menu makanan masih kosong.")
                 }
                 snacks.forEach { snack ->
                     Row(
@@ -1023,7 +1023,7 @@ private fun CheckoutDialog(
                             .padding(top = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Jajan", style = MaterialTheme.typography.bodyMedium)
+                        Text("Makanan", style = MaterialTheme.typography.bodyMedium)
                         Text(formatRupiah(snackTotal), style = MaterialTheme.typography.bodyMedium)
                     }
                 }

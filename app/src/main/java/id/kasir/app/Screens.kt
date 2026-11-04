@@ -419,7 +419,7 @@ fun laporanCsv(
     sb.appendLine("RINGKASAN")
     sb.appendLine("Total Pendapatan;" + grandTotal)
     sb.appendLine("Sewa & Sesi;" + sessionTotal)
-    sb.appendLine("Jajan Langsung;" + salesTotal)
+    sb.appendLine("Makanan Langsung;" + salesTotal)
     sb.appendLine()
     sb.appendLine("PER UNIT")
     sb.appendLine("Unit;Sesi;Durasi (menit);Pendapatan")
@@ -430,7 +430,7 @@ fun laporanCsv(
     }
     sb.appendLine()
     sb.appendLine("RIWAYAT SESI")
-    sb.appendLine("Tanggal Selesai;Unit;Konsol;Mode;Durasi (menit);Sewa;Jajan di Sesi;Total;Metode")
+    sb.appendLine("Tanggal Selesai;Unit;Konsol;Mode;Durasi (menit);Sewa;Makanan di Sesi;Total;Metode")
     sessions.forEach { session ->
         val end = session.endEpoch ?: session.startEpoch
         val modeLabel = if (session.mode == MODE_PAKET) {
@@ -447,7 +447,7 @@ fun laporanCsv(
         )
     }
     sb.appendLine()
-    sb.appendLine("PENJUALAN JAJAN LANGSUNG")
+    sb.appendLine("PENJUALAN MAKANAN LANGSUNG")
     sb.appendLine("Waktu;Item;Qty;Harga Satuan;Total;Metode")
     sales.forEach { sale ->
         sb.appendLine(
@@ -497,7 +497,7 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Menu jajan & stok",
+                "Menu makanan & stok",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
@@ -512,7 +512,7 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
         }
         if (snacks.isEmpty()) {
             Text(
-                "Menu masih kosong. Tambahkan jajan pertama lewat tombol Tambah.",
+                "Menu masih kosong. Tambahkan makanan pertama lewat tombol Tambah.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -675,7 +675,7 @@ private fun BatchSellDialog(
     val canPay = method == PAY_QRIS || paid >= total
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Jual Jajan") },
+        title = { Text("Jual Makanan") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 // B2: baris item memakai petak inisial berwarna yang sama
@@ -859,7 +859,7 @@ private fun SnackFormDialog(
     val stock = stockText.toIntOrNull() ?: 0
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "Tambah Jajan" else "Edit Jajan") },
+        title = { Text(if (initial == null) "Tambah Makanan" else "Edit Makanan") },
         text = {
             Column {
                 // J1 - Ikon + Isian Penuh: kolom isian penuh dengan chip ikon
@@ -867,7 +867,7 @@ private fun SnackFormDialog(
                 TextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nama jajan") },
+                    label = { Text("Nama makanan") },
                     leadingIcon = {
                         Box(
                             modifier = Modifier
@@ -996,12 +996,12 @@ private fun SnackFormDialog(
                                 dao.insertSnack(
                                     SnackEntity(name = name.trim(), price = price, stock = stock)
                                 )
-                                notify("Jajan ditambahkan")
+                                notify("Makanan ditambahkan")
                             } else {
                                 dao.updateSnack(
                                     initial.copy(name = name.trim(), price = price, stock = stock)
                                 )
-                                notify("Jajan diperbarui")
+                                notify("Makanan diperbarui")
                             }
                             onDismiss()
                         }
@@ -1127,7 +1127,7 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text("Jajan langsung", style = MaterialTheme.typography.labelLarge)
+                    Text("Makanan langsung", style = MaterialTheme.typography.labelLarge)
                     Text(
                         formatRupiah(salesTotal),
                         style = MaterialTheme.typography.titleLarge,
@@ -1291,7 +1291,7 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             }
             item {
                 CompositionRow(
-                    label = "Jajan langsung",
+                    label = "Makanan langsung",
                     value = salesTotal,
                     grandTotal = grandTotal,
                     color = Color(0xFFE8833A)
@@ -1674,7 +1674,7 @@ fun LainnyaTab(
                 Text(
                     "Kasir rental PlayStation versi 1.0.0.\n\n" +
                         "Fitur: billing per unit dengan paket berharga manual, " +
-                        "timer akurat dari waktu mulai, jajan menyatu di tagihan sesi, " +
+                        "timer akurat dari waktu mulai, makanan menyatu di tagihan sesi, " +
                         "laporan pendapatan, " +
                         "serta struk yang bisa dibagikan. Semua data tersimpan lokal di HP."
                 )
@@ -1692,7 +1692,7 @@ fun LainnyaTab(
                 Text(
                     "Backup dari " + formatDateTime(data.exportedAtMillis) + " berisi " +
                         data.units.size + " unit, " + data.sessions.size + " sesi, dan " +
-                        data.snackSales.size + " penjualan jajan.\n\n" +
+                        data.snackSales.size + " penjualan makanan.\n\n" +
                         "Semua data yang sekarang ada akan diganti dengan isi backup ini."
                 )
             },

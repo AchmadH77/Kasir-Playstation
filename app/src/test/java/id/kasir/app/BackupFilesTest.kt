@@ -90,7 +90,7 @@ class BackupFilesTest {
         assertTrue(csv.contains("Laporan Kasir - Hari Ini"))
         assertTrue(csv.contains("Total Pendapatan;27000"))
         assertTrue(csv.contains("Sewa & Sesi;17000"))
-        assertTrue(csv.contains("Jajan Langsung;10000"))
+        assertTrue(csv.contains("Makanan Langsung;10000"))
         assertTrue(csv.contains("TV 01;1;120;17000"))
         assertTrue(csv.contains("Paket 2 jam;120;12000;5000;17000;QRIS"))
         assertTrue(csv.contains("Kopi Hitam;2;5000;10000;TUNAI"))
