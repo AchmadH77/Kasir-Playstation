@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -137,7 +138,7 @@ private fun KasirApp() {
                         title = { Text(tabTitles[tab], fontWeight = FontWeight.ExtraBold) }
                     )
                 },
-                snackbarHost = { SnackbarHost(snackbar, modifier = Modifier.padding(bottom = 84.dp)) }
+                snackbarHost = { SnackbarHost(snackbar, modifier = Modifier.padding(bottom = 112.dp)) }
             ) { padding ->
                 Box(
                     modifier = Modifier
@@ -149,7 +150,7 @@ private fun KasirApp() {
                         transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(bottom = 96.dp),
+                            .padding(bottom = 120.dp),
                         label = "tab"
                     ) { target ->
                         when (target) {
@@ -180,7 +181,8 @@ private fun KasirApp() {
 }
 
 // Dock melayang menggantikan NavigationBar: kapsul surfaceContainerHigh
-// dengan bayangan; tab aktif = pil primary (ikon + label), lainnya ikon saja.
+// dengan bayangan; semua tab ikon + label kecil di bawahnya, dan ikon tab
+// aktif berlingkar primary (varian V6 - Ikon + Label Bawah).
 @Composable
 private fun FloatingDock(
     selected: Int,
@@ -202,46 +204,55 @@ private fun FloatingDock(
             .padding(bottom = 16.dp)
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             items.forEachIndexed { index, (icon, label) ->
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
+                val isSelected = index == selected
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onSelect(index) }
+                        .padding(vertical = 4.dp)
                 ) {
-                    if (index == selected) {
-                        Surface(
-                            shape = RoundedCornerShape(percent = 50),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { onSelect(index) }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    icon,
-                                    contentDescription = label,
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    label,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    } else {
-                        IconButton(onClick = { onSelect(index) }) {
-                            Icon(
-                                icon,
-                                contentDescription = label,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .then(
+                                if (isSelected) {
+                                    Modifier.background(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape
+                                    )
+                                } else {
+                                    Modifier
+                                }
                             )
-                        }
+                    ) {
+                        Icon(
+                            icon,
+                            contentDescription = label,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (isSelected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
                     }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 }
             }
         }
