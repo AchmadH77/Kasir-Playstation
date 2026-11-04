@@ -1,6 +1,7 @@
 package id.kasir.app
 
 import id.kasir.app.data.SessionEntity
+import id.kasir.app.data.UnitEntity
 import java.util.Calendar
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -168,5 +169,21 @@ class BillingTest {
         val epoch = c.timeInMillis
         assertEquals(true, startOfWeek(epoch) <= startOfDay(epoch))
         assertEquals(true, startOfWeek(epoch) <= epoch)
+    }
+
+    @Test
+    fun hourlyRateFollowsConsoleType() {
+        assertEquals(5_000L, hourlyRateFor("PS3"))
+        assertEquals(8_000L, hourlyRateFor("PS4"))
+        assertEquals(10_000L, hourlyRateFor("PS5"))
+        assertEquals(0L, hourlyRateFor("PS2"))
+    }
+
+    @Test
+    fun effectiveRatePrefersConsoleRateOverStoredValue() {
+        val ps5 = UnitEntity(name = "TV 09", consoleType = "PS5", hourlyRate = 7_000L)
+        assertEquals(10_000L, effectiveRate(ps5))
+        val unknown = UnitEntity(name = "TV 10", consoleType = "PS2", hourlyRate = 7_000L)
+        assertEquals(7_000L, effectiveRate(unknown))
     }
 }

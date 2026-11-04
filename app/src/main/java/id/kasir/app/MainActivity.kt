@@ -422,7 +422,7 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
                 )
                 Text(
                     when {
-                        session == null -> formatRupiah(unit.hourlyRate) + " / jam"
+                        session == null -> formatRupiah(effectiveRate(unit)) + " / jam"
                         paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
                         session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes)
@@ -494,7 +494,7 @@ private fun StartSessionDialog(
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    unit.consoleType + " - " + formatRupiah(unit.hourlyRate) + " / jam",
+                    unit.consoleType + " - " + formatRupiah(effectiveRate(unit)) + " / jam",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -559,7 +559,7 @@ private fun StartSessionDialog(
                             unitId = unit.id,
                             unitName = unit.name,
                             consoleType = unit.consoleType,
-                            hourlyRate = unit.hourlyRate,
+                            hourlyRate = effectiveRate(unit),
                             mode = mode,
                             paketMinutes = if (mode == MODE_PAKET) paket else 0,
                             startEpoch = System.currentTimeMillis()

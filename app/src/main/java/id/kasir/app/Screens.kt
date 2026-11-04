@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -1189,7 +1190,7 @@ fun UnitManageScreen(dao: KasirDao, notify: (String) -> Unit, onBack: () -> Unit
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                unit.consoleType + " - " + formatRupiah(unit.hourlyRate) + " / jam" +
+                                unit.consoleType + " - " + formatRupiah(effectiveRate(unit)) + " / jam" +
                                     if (inUse) " - sedang dipakai" else "",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1227,10 +1228,10 @@ private fun UnitFormDialog(
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var consoleType by remember { mutableStateOf(initial?.consoleType ?: "PS4") }
-    var rateText by remember { mutableStateOf(initial?.hourlyRate?.toString() ?: "") }
     var confirmDelete by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val rate = rateText.toLongOrNull() ?: 0L
+    // Tarif tidak lagi diketik: otomatis dari jenis konsol yang dipilih.
+    val rate = hourlyRateFor(consoleType)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initial == null) "Tambah Unit" else "Edit Unit") },
@@ -1244,32 +1245,64 @@ private fun UnitFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    "Jenis konsol",
+                    "Jenis konsol & tarifnya",
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(top = 14.dp)
                 )
-                Row(
+                Column(
                     modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     CONSOLE_TYPES.forEach { type ->
-                        FilterChip(
-                            selected = consoleType == type,
+                        val typeSelected = consoleType == type
+                        Card(
                             onClick = { consoleType = type },
-                            label = { Text(type) }
-                        )
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (typeSelected) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                }
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (typeSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.outline
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    type,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (typeSelected) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    formatRupiah(hourlyRateFor(type)) + " / jam",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (typeSelected) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
-                OutlinedTextField(
-                    value = rateText,
-                    onValueChange = { v -> rateText = v.filter { c -> c.isDigit() } },
-                    label = { Text("Tarif per jam (Rp)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                )
                 if (initial != null) {
                     if (inUse) {
                         Text(

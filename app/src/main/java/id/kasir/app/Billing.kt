@@ -1,6 +1,7 @@
 package id.kasir.app
 
 import id.kasir.app.data.SessionEntity
+import id.kasir.app.data.UnitEntity
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -21,6 +22,21 @@ const val BLOCK_MINUTES = 10
 
 val CONSOLE_TYPES = listOf("PS3", "PS4", "PS5")
 val PAKET_OPTIONS = listOf(60, 120, 180, 240, 300)
+
+// Tarif per jam mengikuti jenis konsol; formulir unit tidak lagi meminta
+// tarif sendiri (varian U2, dipilih 2026-11-05).
+fun hourlyRateFor(consoleType: String): Long =
+    when (consoleType.trim().uppercase()) {
+        "PS3" -> 5_000L
+        "PS4" -> 8_000L
+        "PS5" -> 10_000L
+        else -> 0L
+    }
+
+// Tarif yang berlaku untuk satu unit: dari jenis konsolnya. Nilai tersimpan
+// di unit hanya dipakai bila jenis konsolnya tidak dikenal.
+fun effectiveRate(unit: UnitEntity): Long =
+    hourlyRateFor(unit.consoleType).takeIf { it > 0L } ?: unit.hourlyRate
 
 fun formatRupiah(value: Long): String {
     val nf = NumberFormat.getNumberInstance(Locale("id", "ID"))
