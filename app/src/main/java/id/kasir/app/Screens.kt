@@ -52,6 +52,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -648,29 +650,94 @@ private fun SnackFormDialog(
         title = { Text(if (initial == null) "Tambah Jajan" else "Edit Jajan") },
         text = {
             Column {
-                OutlinedTextField(
+                // J1 - Ikon + Isian Penuh: kolom isian penuh dengan chip ikon
+                // berwarna; Simpan selebar dialog, Batal teks di bawahnya.
+                TextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Nama jajan") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(Color(0xFF8B7CFF), RoundedCornerShape(9.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Fastfood,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
                     singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                TextField(
                     value = priceText,
                     onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
                     label = { Text("Harga (Rp)") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(9.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Payments,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 10.dp)
                 )
-                OutlinedTextField(
+                TextField(
                     value = stockText,
                     onValueChange = { v -> stockText = v.filter { c -> c.isDigit() } },
                     label = { Text("Stok") },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(Color(0xFFE8833A), RoundedCornerShape(9.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Inventory2,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 10.dp)
@@ -709,28 +776,35 @@ private fun SnackFormDialog(
                         }
                     }
                 }
+                Button(
+                    enabled = name.isNotBlank() && price > 0,
+                    onClick = {
+                        scope.launch {
+                            if (initial == null) {
+                                dao.insertSnack(
+                                    SnackEntity(name = name.trim(), price = price, stock = stock)
+                                )
+                                notify("Jajan ditambahkan")
+                            } else {
+                                dao.updateSnack(
+                                    initial.copy(name = name.trim(), price = price, stock = stock)
+                                )
+                                notify("Jajan diperbarui")
+                            }
+                            onDismiss()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) { Text("Simpan") }
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) { Text("Batal") }
             }
         },
-        confirmButton = {
-            Button(
-                enabled = name.isNotBlank() && price > 0,
-                onClick = {
-                    scope.launch {
-                        if (initial == null) {
-                            dao.insertSnack(SnackEntity(name = name.trim(), price = price, stock = stock))
-                            notify("Jajan ditambahkan")
-                        } else {
-                            dao.updateSnack(initial.copy(name = name.trim(), price = price, stock = stock))
-                            notify("Jajan diperbarui")
-                        }
-                        onDismiss()
-                    }
-                }
-            ) { Text("Simpan") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Batal") }
-        }
+        confirmButton = {}
     )
 }
 
