@@ -136,7 +136,6 @@ fun receiptText(
     return sb.toString()
 }
 
-@Composable
 // Petak info kecil untuk struk S6: label mungil di atas, nilai tebal.
 @Composable
 private fun ReceiptInfoTile(label: String, value: String, modifier: Modifier = Modifier) {
