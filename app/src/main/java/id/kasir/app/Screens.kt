@@ -372,6 +372,214 @@ fun ReceiptDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) 
     }
 }
 
+// Snapshot penjualan makanan langsung yang baru dibayar, untuk struk.
+private data class SnackSaleSnapshot(
+    val items: List<Pair<SnackEntity, Int>>,
+    val total: Long,
+    val method: String,
+    val paid: Long,
+    val epoch: Long
+)
+
+fun snackReceiptText(
+    storeName: String,
+    snapshot: SnackSaleSnapshot
+): String {
+    val sb = StringBuilder()
+    sb.appendLine(storeName)
+    sb.appendLine("Struk Makanan")
+    sb.appendLine("------------------------------")
+    sb.appendLine("Waktu   : " + formatDateTime(snapshot.epoch))
+    sb.appendLine("------------------------------")
+    snapshot.items.forEach { (snack, qty) ->
+        sb.appendLine(snack.name + " x" + qty + " : " + formatRupiah(snack.price * qty))
+    }
+    sb.appendLine("------------------------------")
+    sb.appendLine("TOTAL   : " + formatRupiah(snapshot.total))
+    sb.appendLine("Bayar   : " + snapshot.method + " " + formatRupiah(snapshot.paid))
+    if (snapshot.paid > snapshot.total) {
+        sb.appendLine("Kembali : " + formatRupiah(snapshot.paid - snapshot.total))
+    }
+    sb.appendLine("------------------------------")
+    sb.appendLine("Terima kasih sudah jajan!")
+    return sb.toString()
+}
+
+// Struk untuk penjualan makanan langsung, mengikuti gaya struk sesi S6:
+// petak info, baris item, pita total hijau tua, baris bayar + metode.
+@Composable
+private fun SnackReceiptDialog(
+    snapshot: SnackSaleSnapshot,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE) }
+    val storeName = prefs.getString("store_name", "Rental PS") ?: "Rental PS"
+    val text = snackReceiptText(storeName, snapshot)
+    val change = snapshot.paid - snapshot.total
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+            ) {
+                Text(
+                    "Struk Pembayaran",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    storeName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ReceiptInfoTile(
+                        "WAKTU",
+                        formatDateTime(snapshot.epoch),
+                        Modifier.weight(1f)
+                    )
+                    ReceiptInfoTile("METODE", snapshot.method, Modifier.weight(1f))
+                }
+                Column(modifier = Modifier.padding(top = 10.dp)) {
+                    snapshot.items.forEach { (snack, qty) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                        ) {
+                            Text(
+                                snack.name + " x" + qty,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(
+                                formatRupiah(snack.price * qty),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF123D26),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "TOTAL",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            formatRupiah(snapshot.total),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Bayar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        formatRupiah(snapshot.paid),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(
+                            snapshot.method,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                if (change > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                    ) {
+                        Text(
+                            "Kembali",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            formatRupiah(change),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                Text(
+                    "Terima kasih sudah jajan!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 14.dp)
+                )
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) { Text("Tutup") }
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Bagikan struk"))
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("Bagikan Struk", modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+        }
+    }
+}
+
 // Menulis berkas teks ke cache lalu membukanya di lembar bagikan Android:
 // dipakai backup JSON (tab Lainnya) dan ekspor laporan CSV (tab Laporan).
 private fun shareTextFile(
@@ -673,11 +881,24 @@ private fun BatchSellDialog(
 ) {
     var method by remember { mutableStateOf(PAY_TUNAI) }
     var paidText by remember { mutableStateOf("") }
+    var sold by remember { mutableStateOf<SnackSaleSnapshot?>(null) }
     val scope = rememberCoroutineScope()
     val total = items.sumOf { it.first.price * it.second }
-    val totalQty = items.sumOf { it.second }
     val paid = paidText.toLongOrNull() ?: 0L
     val canPay = method == PAY_QRIS || paid >= total
+    val soldSnapshot = sold
+    if (soldSnapshot != null) {
+        // Pembayaran berhasil: tampilkan struk dulu; pilihan jualan
+        // dibersihkan (onDone) setelah struk ditutup.
+        SnackReceiptDialog(
+            snapshot = soldSnapshot,
+            onDismiss = {
+                sold = null
+                onDone()
+            }
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Jual Makanan") },
@@ -836,8 +1057,13 @@ private fun BatchSellDialog(
                             )
                             dao.decreaseStock(snack.id, qty)
                         }
-                        notify("Terjual: " + totalQty + " item - " + formatRupiah(total))
-                        onDone()
+                        sold = SnackSaleSnapshot(
+                            items = items,
+                            total = total,
+                            method = method,
+                            paid = if (method == PAY_QRIS) total else paid,
+                            epoch = nowMs
+                        )
                     }
                 }
             ) { Text("Bayar") }
