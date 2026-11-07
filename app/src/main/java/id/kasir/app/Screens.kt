@@ -1652,19 +1652,11 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             Card(
                 modifier = Modifier.weight(1f),
                 colors = CardDefaults.cardColors(
-                    // Cokelat gelap hanya di tema gelap; di tema terang
-                    // pakai wadah amber terang dari tema agar menyatu
-                    // dengan latar terang - permintaan Achmad.
-                    containerColor = if (darkTheme) {
-                        Color(0xFF4A2C14)
-                    } else {
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    },
-                    contentColor = if (darkTheme) {
-                        Color(0xFFFFD9B0)
-                    } else {
-                        MaterialTheme.colorScheme.onTertiaryContainer
-                    }
+                    // Warna kartu disamakan persis dengan kartu
+                    // Playstation (primaryContainer) di tema terang
+                    // maupun gelap - permintaan Achmad.
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -1687,17 +1679,9 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                                 prevValue = prevSalesTotal,
                                 prevLabel = prevLabel,
                                 upColor = upGreen,
-                                downColor = if (darkTheme) {
-                                    Color(0xFFFF9D97)
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                },
-                                flatColor = if (darkTheme) {
-                                    Color(0xFFFFD9B0)
-                                } else {
-                                    MaterialTheme.colorScheme
-                                        .onTertiaryContainer
-                                }
+                                downColor = MaterialTheme.colorScheme.error,
+                                flatColor = MaterialTheme
+                                    .colorScheme.onPrimaryContainer
                             )
                         }
                     }
