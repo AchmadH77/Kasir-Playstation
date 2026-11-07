@@ -6,9 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -56,6 +58,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -87,6 +90,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import id.kasir.app.data.DatabaseProvider
@@ -106,6 +110,21 @@ class MainActivity : ComponentActivity() {
             KasirApp()
         }
     }
+}
+
+// Transisi perpindahan mengikuti token gerak resmi Material 3 Expressive:
+// pudar memakai effects spec dan geser memakai spatial spec dari
+// motionScheme tema (MotionScheme.expressive() di Theme.kt), arah geser
+// mengikuti arah perpindahannya. Bukan tween manual lagi.
+private fun expressiveTransform(motionScheme: MotionScheme, direction: Int): ContentTransform {
+    return (fadeIn(motionScheme.defaultEffectsSpec<Float>()) +
+        slideInHorizontally(motionScheme.defaultSpatialSpec<IntOffset>()) {
+            direction * it / 4
+        }) togetherWith
+        (fadeOut(motionScheme.defaultEffectsSpec<Float>()) +
+            slideOutHorizontally(motionScheme.defaultSpatialSpec<IntOffset>()) {
+                -direction * it / 4
+            })
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -131,9 +150,17 @@ private fun KasirApp() {
     LaunchedEffect(Unit) { SeedData.ensure(dao) }
 
     KasirTheme(darkTheme = dark) {
-        if (showUnitManage) {
-            UnitManageScreen(dao = dao, notify = notify, onBack = { showUnitManage = false })
-        } else {
+        val motionScheme = MaterialTheme.motionScheme
+        AnimatedContent(
+            targetState = showUnitManage,
+            transitionSpec = {
+                expressiveTransform(motionScheme, if (targetState) 1 else -1)
+            },
+            label = "unitManage"
+        ) { manage ->
+            if (manage) {
+                UnitManageScreen(dao = dao, notify = notify, onBack = { showUnitManage = false })
+            } else {
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -149,7 +176,12 @@ private fun KasirApp() {
                 ) {
                     AnimatedContent(
                         targetState = tab,
-                        transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
+                        transitionSpec = {
+                            expressiveTransform(
+                                motionScheme,
+                                if (targetState > initialState) 1 else -1
+                            )
+                        },
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(bottom = 120.dp),
@@ -177,6 +209,7 @@ private fun KasirApp() {
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
+            }
             }
         }
     }
