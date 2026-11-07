@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -449,36 +450,38 @@ private fun FloatingDock(
         ) {
             items.forEachIndexed { index, (icon, label) ->
                 val isSelected = index == selected
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                // DB6: ikon + label bersebelahan; tab aktif di dalam
+                // pil terisi primary, tab lain polos.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .weight(1f)
+                        .padding(horizontal = 2.dp)
+                        .then(
+                            if (isSelected) {
+                                Modifier.background(
+                                    color = MaterialTheme
+                                        .colorScheme.primary,
+                                    shape = CircleShape
+                                )
+                            } else {
+                                Modifier
+                            }
+                        )
                         .clickable { onSelect(index) }
-                        .padding(vertical = 4.dp)
+                        .padding(horizontal = 8.dp, vertical = 10.dp)
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .then(
-                                if (isSelected) {
-                                    Modifier.background(
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                    ) {
+                    Box {
                         Icon(
                             icon,
                             contentDescription = label,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                             tint = if (isSelected) {
                                 MaterialTheme.colorScheme.onPrimary
                             } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                MaterialTheme
+                                    .colorScheme.onSurfaceVariant
                             }
                         )
                         // Lencana jumlah menu stok menipis di tab Makanan.
@@ -487,7 +490,8 @@ private fun FloatingDock(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(18.dp)
+                                    .offset(x = 7.dp, y = (-5).dp)
+                                    .size(16.dp)
                                     .background(
                                         MaterialTheme.colorScheme.error,
                                         CircleShape
@@ -508,16 +512,20 @@ private fun FloatingDock(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Medium
+                        },
                         color = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.onPrimary
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        },
+                        modifier = Modifier.padding(start = 6.dp)
                     )
                 }
             }
