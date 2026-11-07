@@ -11,7 +11,7 @@ jobs:
       - name: Restore signing keystore
         run: echo "${{ secrets.KASIR_KEYSTORE_BASE64 }}" | base64 -d > kasir.p12
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
