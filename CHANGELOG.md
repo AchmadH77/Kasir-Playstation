@@ -46,3 +46,9 @@ build, and this file's Unreleased section will roll into it.
 - The signing keystore no longer lives in the repository tree; CI restores
   it from the `KASIR_KEYSTORE_BASE64` repository secret at build time. The
   key remains in older git history (see docs/ARSITEKTUR.md).
+- Android backup of the app's data is disabled (`allowBackup=false`), so
+  the database cannot be copied out through device backup; the in-app JSON
+  backup remains the way to move data.
+- Backups can optionally be protected with a password: the JSON is wrapped
+  in an AES-GCM envelope whose key is derived from the password (PBKDF2).
+  Plain backups, including older files, remain supported.

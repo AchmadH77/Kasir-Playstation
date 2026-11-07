@@ -7,6 +7,9 @@ import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.SnackSaleEntity
 import id.kasir.app.data.UnitEntity
 import id.kasir.app.data.backupToJson
+import id.kasir.app.data.decryptBackup
+import id.kasir.app.data.encryptBackup
+import id.kasir.app.data.isEncryptedBackup
 import id.kasir.app.data.parseBackup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -93,5 +96,22 @@ class BackupFilesTest {
         assertTrue(csv.contains("Paket 2 jam;120;12000;5000;17000;QRIS"))
         assertTrue(csv.contains("Kopi Hitam;2;5000;10000;TUNAI"))
     }
-}
 
+    @Test
+    fun encryptedBackupRoundTripsAndIsDetected() {
+        val plain = backupToJson(sampleData)
+        val encrypted = encryptBackup(plain, "sandiku123")
+        assertTrue(isEncryptedBackup(encrypted))
+        assertTrue(!isEncryptedBackup(plain))
+        val opened = decryptBackup(encrypted, "sandiku123")
+        assertEquals(plain, opened)
+        assertEquals(sampleData, parseBackup(opened!!))
+    }
+
+    @Test
+    fun encryptedBackupRejectsWrongPassword() {
+        val encrypted = encryptBackup(backupToJson(sampleData), "benar")
+        assertEquals(null, decryptBackup(encrypted, "salah"))
+        assertEquals(null, decryptBackup("bukan json", "benar"))
+    }
+}

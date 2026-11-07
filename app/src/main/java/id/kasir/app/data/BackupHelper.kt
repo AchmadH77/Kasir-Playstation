@@ -1,9 +1,17 @@
 package id.kasir.app.data
 
 import androidx.room.withTransaction
+import java.security.SecureRandom
 import java.text.SimpleDateFormat
+import java.util.Base64
 import java.util.Date
 import java.util.Locale
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -236,3 +244,78 @@ fun parseBackup(text: String): BackupData {
     )
 }
 
+// ---------- Backup terenkripsi (opsional) ----------
+// JSON polos dibungkus amplop { app, version, encrypted: true, kdf,
+// iterations, salt, iv, data }: kunci diturunkan dari kata sandi lewat
+// PBKDF2-HMAC-SHA256, isi dienkripsi AES-GCM. Kata sandi tidak pernah
+// disimpan; GCM memeriksa keaslian isi sehingga sandi yang salah selalu
+// ketahuan. Berkas lama tanpa amplop tetap backup polos biasa.
+private const val BACKUP_KDF_ITERATIONS = 100_000
+
+fun isEncryptedBackup(text: String): Boolean {
+    val root = try {
+        JSONObject(text)
+    } catch (e: Exception) {
+        return false
+    }
+    return root.optString("app") == "kasir" &&
+        root.optBoolean("encrypted", false)
+}
+
+fun encryptBackup(plainText: String, password: String): String {
+    val random = SecureRandom()
+    val salt = ByteArray(16).also { random.nextBytes(it) }
+    val iv = ByteArray(12).also { random.nextBytes(it) }
+    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    cipher.init(
+        Cipher.ENCRYPT_MODE,
+        backupKey(password, salt, BACKUP_KDF_ITERATIONS),
+        GCMParameterSpec(128, iv)
+    )
+    val cipherBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+    val b64 = Base64.getEncoder()
+    return JSONObject().apply {
+        put("app", "kasir")
+        put("version", 1)
+        put("encrypted", true)
+        put("kdf", "PBKDF2WithHmacSHA256")
+        put("iterations", BACKUP_KDF_ITERATIONS)
+        put("salt", b64.encodeToString(salt))
+        put("iv", b64.encodeToString(iv))
+        put("data", b64.encodeToString(cipherBytes))
+    }.toString(2)
+}
+
+// Teks backup polos, atau null bila kata sandinya salah atau berkasnya
+// rusak - data yang sedang berjalan tidak disentuh sama sekali.
+fun decryptBackup(text: String, password: String): String? = try {
+    val root = JSONObject(text)
+    require(
+        root.optString("app") == "kasir" &&
+            root.optBoolean("encrypted", false)
+    )
+    val b64 = Base64.getDecoder()
+    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    cipher.init(
+        Cipher.DECRYPT_MODE,
+        backupKey(
+            password,
+            b64.decode(root.getString("salt")),
+            root.optInt("iterations", BACKUP_KDF_ITERATIONS)
+        ),
+        GCMParameterSpec(128, b64.decode(root.getString("iv")))
+    )
+    String(cipher.doFinal(b64.decode(root.getString("data"))), Charsets.UTF_8)
+} catch (e: Exception) {
+    null
+}
+
+private fun backupKey(
+    password: String,
+    salt: ByteArray,
+    iterations: Int
+): SecretKey {
+    val spec = PBEKeySpec(password.toCharArray(), salt, iterations, 256)
+    val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+    return SecretKeySpec(factory.generateSecret(spec).encoded, "AES")
+}

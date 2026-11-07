@@ -94,6 +94,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -109,6 +110,9 @@ import id.kasir.app.data.applyBackup
 import id.kasir.app.data.backupFileName
 import id.kasir.app.data.backupToJson
 import id.kasir.app.data.collectBackup
+import id.kasir.app.data.decryptBackup
+import id.kasir.app.data.encryptBackup
+import id.kasir.app.data.isEncryptedBackup
 import id.kasir.app.data.parseBackup
 import java.util.Calendar
 import androidx.core.content.FileProvider
@@ -2089,22 +2093,41 @@ fun LainnyaTab(
     val units by dao.unitsFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var pendingRestore by remember { mutableStateOf<BackupData?>(null) }
+    var showBackupDialog by remember { mutableStateOf(false) }
+    var backupPassword by remember { mutableStateOf("") }
+    var pendingEncryptedText by remember { mutableStateOf<String?>(null) }
+    var restorePassword by remember { mutableStateOf("") }
+    var restorePwError by remember { mutableStateOf(false) }
     val restoreLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
             scope.launch {
-                val parsed = try {
-                    val text = context.contentResolver.openInputStream(uri)
+                val text = try {
+                    context.contentResolver.openInputStream(uri)
                         ?.bufferedReader()?.readText()
-                    if (text == null) null else parseBackup(text)
                 } catch (e: Exception) {
                     null
                 }
-                if (parsed != null) {
-                    pendingRestore = parsed
-                } else {
-                    notify("Berkas backup tidak valid")
+                when {
+                    text == null -> notify("Berkas backup tidak valid")
+                    isEncryptedBackup(text) -> {
+                        restorePassword = ""
+                        restorePwError = false
+                        pendingEncryptedText = text
+                    }
+                    else -> {
+                        val parsed = try {
+                            parseBackup(text)
+                        } catch (e: Exception) {
+                            null
+                        }
+                        if (parsed != null) {
+                            pendingRestore = parsed
+                        } else {
+                            notify("Berkas backup tidak valid")
+                        }
+                    }
                 }
             }
         }
@@ -2179,23 +2202,9 @@ fun LainnyaTab(
                 ShortcutTile(
                     icon = Icons.Default.Backup,
                     label = "Backup Data",
-                    sub = "1 berkas",
+                    sub = "JSON + sandi",
                     modifier = Modifier.weight(1f),
-                    onClick = {
-                        scope.launch {
-                            val data = collectBackup(
-                                dao,
-                                System.currentTimeMillis()
-                            )
-                            shareTextFile(
-                                context = context,
-                                fileName = backupFileName(data.exportedAtMillis),
-                                content = backupToJson(data),
-                                mimeType = "application/json",
-                                chooserTitle = "Bagikan Backup Kasir"
-                            )
-                        }
-                    }
+                    onClick = { showBackupDialog = true }
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2386,6 +2395,147 @@ fun LainnyaTab(
                 }
             }
         }
+    }
+    if (showBackupDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showBackupDialog = false
+                backupPassword = ""
+            },
+            title = { Text("Backup Data") },
+            text = {
+                Column {
+                    Text(
+                        "Seluruh data dibagikan sebagai satu berkas " +
+                            "JSON. Beri kata sandi bila berkasnya ingin " +
+                            "terenkripsi; kosongkan bila tidak perlu.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = backupPassword,
+                        onValueChange = { backupPassword = it },
+                        label = { Text("Kata sandi (boleh kosong)") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    )
+                    if (backupPassword.isNotEmpty()) {
+                        Text(
+                            "Kata sandi tidak disimpan di mana pun - " +
+                                "bila lupa, backup ini tidak dapat dibuka.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val pw = backupPassword
+                    showBackupDialog = false
+                    backupPassword = ""
+                    scope.launch {
+                        val data = collectBackup(
+                            dao,
+                            System.currentTimeMillis()
+                        )
+                        val plain = backupToJson(data)
+                        shareTextFile(
+                            context = context,
+                            fileName = backupFileName(data.exportedAtMillis),
+                            content = if (pw.isEmpty()) {
+                                plain
+                            } else {
+                                encryptBackup(plain, pw)
+                            },
+                            mimeType = "application/json",
+                            chooserTitle = "Bagikan Backup Kasir"
+                        )
+                    }
+                }) { Text("Backup") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showBackupDialog = false
+                    backupPassword = ""
+                }) { Text("Batal") }
+            }
+        )
+    }
+    pendingEncryptedText?.let { encText ->
+        AlertDialog(
+            onDismissRequest = {
+                pendingEncryptedText = null
+                restorePassword = ""
+                restorePwError = false
+            },
+            title = { Text("Backup Terenkripsi") },
+            text = {
+                Column {
+                    Text(
+                        "Berkas ini dilindungi kata sandi. Masukkan " +
+                            "kata sandi untuk membukanya.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = restorePassword,
+                        onValueChange = {
+                            restorePassword = it
+                            restorePwError = false
+                        },
+                        label = { Text("Kata sandi") },
+                        singleLine = true,
+                        isError = restorePwError,
+                        supportingText = if (restorePwError) {
+                            { Text("Kata sandi salah atau berkas rusak") }
+                        } else {
+                            null
+                        },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val plain = decryptBackup(encText, restorePassword)
+                    val parsed = plain?.let {
+                        try {
+                            parseBackup(it)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    if (parsed != null) {
+                        pendingEncryptedText = null
+                        restorePassword = ""
+                        restorePwError = false
+                        pendingRestore = parsed
+                    } else if (plain == null) {
+                        restorePwError = true
+                    } else {
+                        pendingEncryptedText = null
+                        restorePassword = ""
+                        restorePwError = false
+                        notify("Berkas backup tidak valid")
+                    }
+                }) { Text("Buka") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingEncryptedText = null
+                    restorePassword = ""
+                    restorePwError = false
+                }) { Text("Batal") }
+            }
+        )
     }
     pendingRestore?.let { data ->
         AlertDialog(
