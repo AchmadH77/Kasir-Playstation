@@ -9,6 +9,12 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Reports layout K2 (LE3 + LF1): the hero card now holds the whole
+  calculation (total with comparison chip, Playstation / snacks /
+  expense rows, net-profit line); the separate detail cards and the
+  solid-red expense card are gone. The two charts became side-by-side
+  mini cards and the composition became one strip card (Playstation vs
+  snacks vs expenses).
 - Swipe tab navigation: the four tabs live in a HorizontalPager — swipe
   to move between tabs, dock taps animate to the target page, and the
   header follows the visible page.

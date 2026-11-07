@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -1482,46 +1483,6 @@ private fun DeltaChip(diff: Long, prevLabel: String, upColor: Color) {
     }
 }
 
-// LP10: baris perbandingan kecil di kartu rincian - nilai periode
-// sebelumnya dengan panah arah berwarna.
-@Composable
-private fun DeltaLine(
-    current: Long,
-    prevValue: Long,
-    prevLabel: String,
-    upColor: Color,
-    downColor: Color,
-    flatColor: Color
-) {
-    val diff = current - prevValue
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        when {
-            diff > 0L -> Icon(
-                Icons.Default.TrendingUp,
-                contentDescription = null,
-                tint = upColor,
-                modifier = Modifier.size(13.dp)
-            )
-            diff < 0L -> Icon(
-                Icons.Default.TrendingDown,
-                contentDescription = null,
-                tint = downColor,
-                modifier = Modifier.size(13.dp)
-            )
-        }
-        Text(
-            prevLabel + " " + formatRupiah(prevValue),
-            style = MaterialTheme.typography.bodySmall,
-            color = when {
-                diff > 0L -> upColor
-                diff < 0L -> downColor
-                else -> flatColor
-            },
-            modifier = Modifier.padding(start = 4.dp)
-        )
-    }
-}
-
 // ---------- Tab Laporan ----------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1635,9 +1596,11 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             }
         }
-        // LP10: total jadi kartu hero di atas dengan chip perbandingan
-        // terhadap periode sebelumnya; dua kartu rincian di bawahnya,
-        // masing-masing dengan baris nilai periode sebelumnya.
+        // K2 (LE3 + LF1): seluruh hitungan masuk satu kartu hero -
+        // total + chip perbandingan di atas, rincian Playstation /
+        // Makanan / Pengeluaran seperti struk, ditutup laba bersih.
+        // Kartu rincian terpisah dan kartu Pengeluaran merah lama
+        // digantikan susunan ini.
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1648,15 +1611,16 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Total Pendapatan", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    formatRupiah(grandTotal),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                if (period != 3) {
-                    Box(modifier = Modifier.padding(top = 10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Total Pendapatan",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (period != 3) {
                         DeltaChip(
                             diff = grandTotal - prevGrandTotal,
                             prevLabel = prevLabel,
@@ -1664,147 +1628,52 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                         )
                     }
                 }
+                Text(
+                    formatRupiah(grandTotal),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
                 HorizontalDivider(
                     modifier = Modifier.padding(top = 12.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                        .copy(alpha = 0.25f)
+                )
+                LaporanCalcRow(
+                    label = "Playstation",
+                    amount = formatRupiah(sessionTotal)
+                )
+                LaporanCalcRow(
+                    label = "Makanan langsung",
+                    amount = formatRupiah(salesTotal)
+                )
+                LaporanCalcRow(
+                    label = "Pengeluaran",
+                    amount = "- " + formatRupiah(expenseTotal),
+                    amountColor = MaterialTheme.colorScheme.error
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 4.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                         .copy(alpha = 0.25f)
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp),
+                        .padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         "Laba bersih",
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         formatRupiah(netTotal),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold
                     )
-                }
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Card(
-                modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text("Playstation", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        formatRupiah(sessionTotal),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                    Text(
-                        periodSessions.size.toString() + " sesi selesai",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                    if (period != 3) {
-                        Box(modifier = Modifier.padding(top = 6.dp)) {
-                            DeltaLine(
-                                current = sessionTotal,
-                                prevValue = prevSessionTotal,
-                                prevLabel = prevLabel,
-                                upColor = upGreen,
-                                downColor = MaterialTheme.colorScheme.error,
-                                flatColor = MaterialTheme
-                                    .colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-            Card(
-                modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(
-                    // Warna kartu disamakan persis dengan kartu
-                    // Playstation (primaryContainer) di tema terang
-                    // maupun gelap - permintaan Achmad.
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text("Makanan langsung", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        formatRupiah(salesTotal),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                    Text(
-                        periodSales.size.toString() + " penjualan",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                    if (period != 3) {
-                        Box(modifier = Modifier.padding(top = 6.dp)) {
-                            DeltaLine(
-                                current = salesTotal,
-                                prevValue = prevSalesTotal,
-                                prevLabel = prevLabel,
-                                upColor = upGreen,
-                                downColor = MaterialTheme.colorScheme.error,
-                                flatColor = MaterialTheme
-                                    .colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 10.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer
-            )
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Pengeluaran", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    formatRupiah(expenseTotal),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                Text(
-                    periodExpenses.size.toString() + " catatan",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                if (period != 3) {
-                    Box(modifier = Modifier.padding(top = 6.dp)) {
-                        DeltaLine(
-                            current = expenseTotal,
-                            prevValue = prevExpenseTotal,
-                            prevLabel = prevLabel,
-                            upColor = MaterialTheme.colorScheme.error,
-                            downColor = upGreen,
-                            flatColor = MaterialTheme
-                                .colorScheme.onErrorContainer
-                        )
-                    }
                 }
             }
         }
@@ -1845,186 +1714,267 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
-                Text(
-                    "Pendapatan 7 Hari Terakhir",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme
+                                .colorScheme.surfaceContainerHigh
+                        )
                     ) {
-                        last7.forEach { (dayName, totalDay) ->
-                            val frac = if (maxDay > 0) {
-                                totalDay.toFloat() / maxDay.toFloat()
-                            } else {
-                                0f
-                            }
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "Pendapatan 7 Hari",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(
-                                    formatRupiahShort(totalDay),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(90.dp)
-                                        .padding(top = 4.dp),
-                                    contentAlignment = Alignment.BottomCenter
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth(0.62f)
-                                            .height((90f * frac).coerceAtLeast(4f).dp)
-                                            .background(
-                                                if (totalDay == maxDay && maxDay > 0) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.primaryContainer
-                                                },
-                                                RoundedCornerShape(6.dp)
+                                last7.forEach { (dayName, totalDay) ->
+                                    val frac = if (maxDay > 0) {
+                                        totalDay.toFloat() / maxDay.toFloat()
+                                    } else {
+                                        0f
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        horizontalAlignment =
+                                            Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(44.dp),
+                                            contentAlignment =
+                                                Alignment.BottomCenter
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.62f)
+                                                    .height(
+                                                        (44f * frac)
+                                                            .coerceAtLeast(3f).dp
+                                                    )
+                                                    .background(
+                                                        if (totalDay == maxDay &&
+                                                            maxDay > 0
+                                                        ) {
+                                                            MaterialTheme
+                                                                .colorScheme
+                                                                .primary
+                                                        } else {
+                                                            MaterialTheme
+                                                                .colorScheme
+                                                                .primaryContainer
+                                                        },
+                                                        RoundedCornerShape(4.dp)
+                                                    )
                                             )
-                                    )
+                                        }
+                                        Text(
+                                            dayName.take(1),
+                                            style = MaterialTheme
+                                                .typography.labelSmall,
+                                            color = MaterialTheme
+                                                .colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .padding(top = 3.dp)
+                                        )
+                                    }
                                 }
-                                Text(
-                                    dayName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
                             }
+                            Text(
+                                if (maxDay > 0) {
+                                    "Tertinggi: " +
+                                        (last7.maxByOrNull { it.second }
+                                            ?.first ?: "-") +
+                                        " " + formatRupiahShort(maxDay)
+                                } else {
+                                    "Belum ada pendapatan 7 hari ini."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme
+                                    .colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
                         }
                     }
-                }
-            }
-            item {
-                Text(
-                    "Jam Tersibuk",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            hourly.forEachIndexed { hour, totalHour ->
-                                val frac = if (maxHourly > 0) {
-                                    totalHour.toFloat() / maxHourly.toFloat()
-                                } else {
-                                    0f
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme
+                                .colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "Jam Tersibuk",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                hourly.forEachIndexed { hour, totalHour ->
+                                    val frac = if (maxHourly > 0) {
+                                        totalHour.toFloat() /
+                                            maxHourly.toFloat()
+                                    } else {
+                                        0f
+                                    }
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(72.dp),
-                                        contentAlignment = Alignment.BottomCenter
+                                            .weight(1f)
+                                            .height(44.dp),
+                                        contentAlignment =
+                                            Alignment.BottomCenter
                                     ) {
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth(0.72f)
                                                 .height(
-                                                    (72f * frac)
+                                                    (44f * frac)
                                                         .coerceAtLeast(3f).dp
                                                 )
                                                 .background(
                                                     if (hour == peakHour &&
                                                         maxHourly > 0
                                                     ) {
-                                                        MaterialTheme.colorScheme
-                                                            .primary
+                                                        MaterialTheme
+                                                            .colorScheme.primary
                                                     } else {
-                                                        MaterialTheme.colorScheme
+                                                        MaterialTheme
+                                                            .colorScheme
                                                             .primaryContainer
                                                     },
-                                                    RoundedCornerShape(3.dp)
+                                                    RoundedCornerShape(2.dp)
                                                 )
                                         )
                                     }
+                                }
+                            }
+                            Text(
+                                if (maxHourly > 0) {
+                                    "Paling ramai " +
+                                        "%02d.00".format(peakHour) + "-" +
+                                        "%02d.00".format((peakHour + 1) % 24) +
+                                        " (" +
+                                        formatRupiahShort(maxHourly) + ")"
+                                } else {
+                                    "Belum ada pendapatan pada periode ini."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme
+                                    .colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme
+                            .colorScheme.surfaceContainerHigh
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            "Komposisi",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        val flowTotal = sessionTotal + salesTotal + expenseTotal
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 10.dp)
+                                .height(10.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(
+                                    MaterialTheme
+                                        .colorScheme.surfaceContainerHighest
+                                )
+                        ) {
+                            Row(modifier = Modifier.fillMaxSize()) {
+                                if (sessionTotal > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(sessionTotal.toFloat())
+                                            .fillMaxHeight()
+                                            .background(
+                                                MaterialTheme
+                                                    .colorScheme.primary
+                                            )
+                                    )
+                                }
+                                if (salesTotal > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(salesTotal.toFloat())
+                                            .fillMaxHeight()
+                                            .background(Color(0xFFE8833A))
+                                    )
+                                }
+                                if (expenseTotal > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(expenseTotal.toFloat())
+                                            .fillMaxHeight()
+                                            .background(
+                                                MaterialTheme
+                                                    .colorScheme.error
+                                            )
+                                    )
                                 }
                             }
                         }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 4.dp)
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            (0..7).forEach { step ->
-                                Text(
-                                    "%02d".format(step * 3),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme
-                                        .colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.weight(3f)
-                                )
-                            }
+                            Text(
+                                "Playstation " +
+                                    formatRupiahShort(sessionTotal) +
+                                    ", Makanan " +
+                                    formatRupiahShort(salesTotal),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme
+                                    .colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                "Pengeluaran " +
+                                    formatRupiahShort(expenseTotal),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
-                        Text(
-                            if (maxHourly > 0) {
-                                "Paling ramai jam " +
-                                    "%02d.00".format(peakHour) + "-" +
-                                    "%02d.00".format((peakHour + 1) % 24) +
-                                    " dengan total " + formatRupiah(maxHourly)
-                            } else {
-                                "Belum ada pendapatan pada periode ini."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
+                        if (flowTotal == 0L) {
+                            Text(
+                                "Belum ada data pada periode ini.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme
+                                    .colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 }
-            }
-            item {
-                Text(
-                    "Komposisi Pendapatan",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            item {
-                CompositionRow(
-                    label = "Playstation",
-                    value = sessionTotal,
-                    grandTotal = grandTotal,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            item {
-                CompositionRow(
-                    label = "Makanan langsung",
-                    value = salesTotal,
-                    grandTotal = grandTotal,
-                    color = Color(0xFFE8833A)
-                )
             }
             item {
                 Row(
@@ -2362,48 +2312,32 @@ private fun ExpenseFormDialog(
     }
 }
 
-// Satu baris komposisi pendapatan: titik warna, label, nilai + persen, dan bar proporsi.
+// Satu baris hitungan di kartu hero Laporan (K2): label di kiri,
+// nominal rata kanan; nominal pengeluaran tampil merah.
 @Composable
-private fun CompositionRow(label: String, value: Long, grandTotal: Long, color: Color) {
-    val pct = if (grandTotal > 0) (value * 100 / grandTotal).toInt() else 0
-    val frac = if (grandTotal > 0) value.toFloat() / grandTotal.toFloat() else 0f
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(color, RoundedCornerShape(50))
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp)
-            )
-            Text(
-                formatRupiah(value) + " (" + pct + "%)",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .height(8.dp)
-                .background(
-                    MaterialTheme.colorScheme.surfaceContainerHighest,
-                    RoundedCornerShape(4.dp)
-                )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(frac)
-                    .height(8.dp)
-                    .background(color, RoundedCornerShape(4.dp))
-            )
-        }
+private fun LaporanCalcRow(
+    label: String,
+    amount: String,
+    amountColor: Color? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            amount,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = amountColor
+                ?: MaterialTheme.colorScheme.onPrimaryContainer
+        )
     }
 }
 
