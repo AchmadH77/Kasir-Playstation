@@ -272,7 +272,7 @@ fun ReceiptDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) 
                         .fillMaxWidth()
                         .padding(top = 14.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF123D26),
+                        containerColor = Color(0xFF16324F),
                         contentColor = Color.White
                     )
                 ) {
@@ -1096,7 +1096,7 @@ private fun BatchSellDialog(
                         .fillMaxWidth()
                         .padding(top = 12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF123D26),
+                        containerColor = Color(0xFF16324F),
                         contentColor = Color.White
                     )
                 ) {
@@ -2088,7 +2088,7 @@ fun LainnyaTab(
                                     topEnd = 24.dp
                                 )
                             )
-                            .background(Color(0xFF123D26))
+                            .background(Color(0xFF16324F))
                             .padding(horizontal = 18.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -2108,7 +2108,7 @@ fun LainnyaTab(
                             Text(
                                 storeName + " - versi 1.0.0",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFA9CDB5)
+                                color = Color(0xFFA9C4DE)
                             )
                         }
                     }

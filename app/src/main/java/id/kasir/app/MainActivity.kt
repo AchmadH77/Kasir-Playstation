@@ -248,7 +248,7 @@ private fun KasirApp(
                             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF123D26),
+                            containerColor = Color(0xFF16324F),
                             contentColor = Color.White
                         )
                     ) {
@@ -268,7 +268,7 @@ private fun KasirApp(
                                 Icon(
                                     tabIcons[tab],
                                     contentDescription = null,
-                                    tint = Color(0xFF123D26),
+                                    tint = Color(0xFF16324F),
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -1154,7 +1154,7 @@ private fun StartSessionDialog(
                             .fillMaxWidth()
                             .padding(top = 12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF123D26),
+                            containerColor = Color(0xFF16324F),
                             contentColor = Color.White
                         )
                     ) {
@@ -1167,7 +1167,7 @@ private fun StartSessionDialog(
                             Text(
                                 "Unit kosong, siap dimulai",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFA9CDB5),
+                                color = Color(0xFFA9C4DE),
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -1443,7 +1443,7 @@ private fun SessionDetailDialog(
                                 .fillMaxWidth()
                                 .padding(top = 12.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF123D26),
+                                containerColor = Color(0xFF16324F),
                                 contentColor = Color.White
                             )
                         ) {
