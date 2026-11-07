@@ -9,6 +9,10 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Reservations RC6D: the Unit tab's reservation card becomes a
+  two-column grid of compact mini cards (max 4) under a section title;
+  the "+ Tambah" button is now a filled navy pill matching the units'
+  "Mulai" buttons, and every mini card has its own navy "Mulai" pill.
 - Reports layout K2 (LE3 + LF1): the hero card now holds the whole
   calculation (total with comparison chip, Playstation / snacks /
   expense rows, net-profit line); the separate detail cards and the

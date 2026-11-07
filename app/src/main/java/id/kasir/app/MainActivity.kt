@@ -111,6 +111,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -622,87 +623,181 @@ private fun UnitTab(
                 )
             }
         }
-        // Reservasi: penanda pesanan unit berikutnya + formulir tambah.
+        // Reservasi RC6D: grid dua kolom kartu mini di bawah judul
+        // seksi; tombol "+ Tambah" pil navy seperti tombol Mulai, dan
+        // tiap kartu punya pil "Mulai" mini untuk memulai sesi dari
+        // reservasi itu (perilaku sama seperti ikon main lama).
         val dayStart = startOfDay(System.currentTimeMillis())
         val upcoming = reservations.filter { it.startEpoch >= dayStart }
-        Card(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
+                .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Reservasi",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = { showReservationForm = true }) {
-                        Text("+ Tambah")
-                    }
-                }
-                if (upcoming.isEmpty()) {
-                    Text(
-                        "Belum ada reservasi.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                upcoming.take(3).forEach { r ->
+            Text(
+                "Reservasi",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            Button(
+                onClick = { showReservationForm = true },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF16324F),
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(
+                    horizontal = 14.dp,
+                    vertical = 6.dp
+                ),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text(
+                    "+ Tambah",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        if (upcoming.isEmpty()) {
+            Text(
+                "Belum ada reservasi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp
+                )
+            )
+        } else {
+            Column(
+                modifier = Modifier.padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                upcoming.take(4).chunked(2).forEach { rowItems ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                r.unitName + " - " + r.customerName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                formatTime(r.startEpoch) + " - Paket " +
-                                    formatMinutes(r.durationMinutes) +
-                                    if (r.price > 0) {
-                                        " - " + formatRupiah(r.price)
-                                    } else {
-                                        ""
-                                    },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                val u = units.firstOrNull { it.id == r.unitId }
-                                if (u != null && active.none { it.unitId == u.id }) {
-                                    startPrefill = r
-                                    startUnit = u
-                                } else {
-                                    notify("Unit sedang dipakai")
+                        rowItems.forEach { r ->
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme
+                                        .colorScheme.surfaceContainerHigh
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp)
+                                ) {
+                                    Text(
+                                        formatTime(r.startEpoch) +
+                                            " - " + r.unitName,
+                                        style = MaterialTheme
+                                            .typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        r.customerName + " - " +
+                                            formatMinutes(r.durationMinutes) +
+                                            if (r.price > 0) {
+                                                " - " + formatRupiah(r.price)
+                                            } else {
+                                                ""
+                                            },
+                                        style = MaterialTheme
+                                            .typography.bodySmall,
+                                        color = MaterialTheme
+                                            .colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 6.dp),
+                                        verticalAlignment =
+                                            Alignment.CenterVertically
+                                    ) {
+                                        IconButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    dao.deleteReservation(r)
+                                                }
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = null,
+                                                tint = MaterialTheme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        Spacer(
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Button(
+                                            onClick = {
+                                                val u = units.firstOrNull {
+                                                    it.id == r.unitId
+                                                }
+                                                if (u != null &&
+                                                    active.none {
+                                                        it.unitId == u.id
+                                                    }
+                                                ) {
+                                                    startPrefill = r
+                                                    startUnit = u
+                                                } else {
+                                                    notify(
+                                                        "Unit sedang dipakai"
+                                                    )
+                                                }
+                                            },
+                                            colors = ButtonDefaults
+                                                .buttonColors(
+                                                    containerColor =
+                                                        Color(0xFF16324F),
+                                                    contentColor = Color.White
+                                                ),
+                                            contentPadding = PaddingValues(
+                                                horizontal = 12.dp,
+                                                vertical = 4.dp
+                                            ),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text(
+                                                "Mulai",
+                                                style = MaterialTheme
+                                                    .typography.labelMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
                         }
-                        IconButton(
-                            onClick = {
-                                scope.launch { dao.deleteReservation(r) }
-                            }
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null)
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
-                if (upcoming.size > 3) {
+                if (upcoming.size > 4) {
                     Text(
-                        "+" + (upcoming.size - 3) + " reservasi lainnya",
+                        "+" + (upcoming.size - 4) + " reservasi lainnya",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

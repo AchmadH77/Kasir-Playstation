@@ -67,7 +67,7 @@ Prices are always stored as snapshots on the transaction rows, so changing a men
 
 ## Reservations
 
-- The Unit tab shows a Reservations card with today's upcoming bookings (max 3 + "+N more"). A reservation stores a snapshot of the unit name, the customer, the start time (date + time pickers), a package duration, and an optional price. The booking form is a full-screen page with a navy hero header and a bottom-pinned save button, not a dialog.
+- The Unit tab shows its reservations as a two-column grid of compact mini cards (max 4 + "+N more") under a section title with a navy "+ Tambah" pill button; each mini card (time + unit, customer + package + price) carries a small trash icon and a navy "Mulai" pill that starts the session from that booking (layout RC6D). A reservation stores a snapshot of the unit name, the customer, the start time (date + time pickers), a package duration, and an optional price. The booking form is a full-screen page with a navy hero header and a bottom-pinned save button, not a dialog.
 - Starting a reservation opens the Start Session form prefilled with its duration and price; starting deletes the reservation. A reminder notification fires 15 minutes before the start (see Notifications).
 
 ## Notifications & alarms (`SessionAlarm.kt`)
