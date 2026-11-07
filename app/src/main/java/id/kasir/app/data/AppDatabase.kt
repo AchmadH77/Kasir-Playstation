@@ -99,6 +99,16 @@ interface KasirDao {
     @Insert
     suspend fun insertSnackSale(sale: SnackSaleEntity): Long
 
+    // Reservasi unit
+    @Query("SELECT * FROM reservations ORDER BY startEpoch ASC")
+    fun reservationsFlow(): Flow<List<ReservationEntity>>
+
+    @Insert
+    suspend fun insertReservation(reservation: ReservationEntity): Long
+
+    @Delete
+    suspend fun deleteReservation(reservation: ReservationEntity)
+
     // Backup & restore: baca semua baris sekaligus dan kosongkan tabel.
     @Query("SELECT * FROM units")
     suspend fun allUnitsOnce(): List<UnitEntity>
@@ -114,6 +124,12 @@ interface KasirDao {
 
     @Query("SELECT * FROM snack_sales")
     suspend fun allSnackSalesOnce(): List<SnackSaleEntity>
+
+    @Query("SELECT * FROM reservations")
+    suspend fun allReservationsOnce(): List<ReservationEntity>
+
+    @Query("DELETE FROM reservations")
+    suspend fun clearReservations()
 
     @Query("DELETE FROM session_snacks")
     suspend fun clearSessionSnacks()
@@ -137,9 +153,10 @@ interface KasirDao {
         SnackEntity::class,
         SessionEntity::class,
         SessionSnackEntity::class,
-        SnackSaleEntity::class
+        SnackSaleEntity::class,
+        ReservationEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -154,6 +171,22 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+// v3: tabel reservations untuk fitur reservasi unit.
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS reservations (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "unitId INTEGER NOT NULL, " +
+                "unitName TEXT NOT NULL, " +
+                "customerName TEXT NOT NULL, " +
+                "startEpoch INTEGER NOT NULL, " +
+                "durationMinutes INTEGER NOT NULL, " +
+                "price INTEGER NOT NULL)"
+        )
+    }
+}
+
 object DatabaseProvider {
     @Volatile
     private var instance: AppDatabase? = null
@@ -164,7 +197,7 @@ object DatabaseProvider {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "kasir.db"
-            ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
         }
     }
 }
@@ -191,3 +224,4 @@ object SeedData {
         }
     }
 }
+

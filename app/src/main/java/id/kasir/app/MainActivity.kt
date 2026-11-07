@@ -6,6 +6,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +25,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,6 +49,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
@@ -51,6 +58,11 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -84,6 +96,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -97,6 +110,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import id.kasir.app.data.DatabaseProvider
+import id.kasir.app.data.ReservationEntity
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import id.kasir.app.data.KasirDao
 import id.kasir.app.data.SeedData
 import id.kasir.app.data.SessionEntity
@@ -145,6 +164,8 @@ private fun KasirApp() {
     val dark = darkOverride ?: systemDark
     var tab by remember { mutableIntStateOf(0) }
     var showUnitManage by remember { mutableStateOf(false) }
+    // Sinyal dari pop-up waktu habis: tab Unit membuka rincian sesi ini.
+    var openRequest by remember { mutableStateOf<Long?>(null) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val notify: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
@@ -235,7 +256,12 @@ private fun KasirApp() {
                         label = "tab"
                     ) { target ->
                         when (target) {
-                            0 -> UnitTab(dao = dao, notify = notify)
+                            0 -> UnitTab(
+                                dao = dao,
+                                notify = notify,
+                                openRequest = openRequest,
+                                onOpenRequestConsumed = { openRequest = null }
+                            )
                             1 -> JajanTab(dao = dao, notify = notify)
                             2 -> LaporanTab(dao = dao, notify = notify)
                             else -> LainnyaTab(
@@ -258,6 +284,52 @@ private fun KasirApp() {
                 }
             }
             }
+        }
+        // Pop-up waktu habis: muncul sekali per sesi paket yang waktunya
+        // habis, di tab mana pun kasir sedang berada.
+        val activeSessions by dao.activeSessionsFlow()
+            .collectAsState(initial = emptyList())
+        val anyPaketRunning = activeSessions.any {
+            it.mode == MODE_PAKET && it.status != STATUS_PAUSED
+        }
+        val appNow by rememberNowMillis(active = anyPaketRunning)
+        var expiredNotified by remember { mutableStateOf<Set<Long>>(emptySet()) }
+        val expiredPopup = activeSessions.firstOrNull {
+            it.mode == MODE_PAKET && it.status != STATUS_PAUSED &&
+                remainingMillis(it, appNow) <= 0 && it.id !in expiredNotified
+        }
+        if (expiredPopup != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    expiredNotified = expiredNotified + expiredPopup.id
+                },
+                title = { Text("Waktu Habis") },
+                text = {
+                    Text(
+                        "Waktu sesi di " + expiredPopup.unitName +
+                            " sudah habis (Paket " +
+                            formatMinutes(expiredPopup.paketMinutes) + "). " +
+                            "Buka sesinya untuk menyelesaikan pembayaran " +
+                            "atau menambah waktu."
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            expiredNotified = expiredNotified + expiredPopup.id
+                            tab = 0
+                            openRequest = expiredPopup.id
+                        }
+                    ) { Text("Buka Sesi") }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            expiredNotified = expiredNotified + expiredPopup.id
+                        }
+                    ) { Text("Nanti Saja") }
+                }
+            )
         }
     }
 }
@@ -364,13 +436,31 @@ private fun rememberNowMillis(active: Boolean = true): State<Long> {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
+private fun UnitTab(
+    dao: KasirDao,
+    notify: (String) -> Unit,
+    openRequest: Long? = null,
+    onOpenRequestConsumed: () -> Unit = {}
+) {
     val units by dao.unitsFlow().collectAsState(initial = emptyList())
     val active by dao.activeSessionsFlow().collectAsState(initial = emptyList())
     val finished by dao.finishedSessionsFlow().collectAsState(initial = emptyList())
+    val reservations by dao.reservationsFlow().collectAsState(initial = emptyList())
     var startUnit by remember { mutableStateOf<UnitEntity?>(null) }
+    var startPrefill by remember { mutableStateOf<ReservationEntity?>(null) }
+    var showReservationForm by remember { mutableStateOf(false) }
     var detailSessionId by remember { mutableStateOf<Long?>(null) }
     var receiptSession by remember { mutableStateOf<SessionEntity?>(null) }
+    val scope = rememberCoroutineScope()
+
+    // Pop-up waktu habis meminta sesi ini dibuka.
+    LaunchedEffect(openRequest) {
+        val sid = openRequest
+        if (sid != null) {
+            if (active.any { it.id == sid }) detailSessionId = sid
+            onOpenRequestConsumed()
+        }
+    }
 
     val todayStart = startOfDay(System.currentTimeMillis())
     val todayIncome = finished.filter { (it.endEpoch ?: 0L) >= todayStart }.sumOf { it.total }
@@ -403,6 +493,93 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             }
         }
+        // Reservasi: penanda pesanan unit berikutnya + formulir tambah.
+        val dayStart = startOfDay(System.currentTimeMillis())
+        val upcoming = reservations.filter { it.startEpoch >= dayStart }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Reservasi",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { showReservationForm = true }) {
+                        Text("+ Tambah")
+                    }
+                }
+                if (upcoming.isEmpty()) {
+                    Text(
+                        "Belum ada reservasi.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                upcoming.take(3).forEach { r ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                r.unitName + " - " + r.customerName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                formatTime(r.startEpoch) + " - Paket " +
+                                    formatMinutes(r.durationMinutes) +
+                                    if (r.price > 0) {
+                                        " - " + formatRupiah(r.price)
+                                    } else {
+                                        ""
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                val u = units.firstOrNull { it.id == r.unitId }
+                                if (u != null && active.none { it.unitId == u.id }) {
+                                    startPrefill = r
+                                    startUnit = u
+                                } else {
+                                    notify("Unit sedang dipakai")
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        }
+                        IconButton(
+                            onClick = {
+                                scope.launch { dao.deleteReservation(r) }
+                            }
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                        }
+                    }
+                }
+                if (upcoming.size > 3) {
+                    Text(
+                        "+" + (upcoming.size - 3) + " reservasi lainnya",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         if (units.isEmpty()) {
             Text(
                 "Belum ada unit. Tambahkan lewat Lainnya - Atur Unit & Tarif.",
@@ -421,8 +598,18 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
                 UnitRow(
                     unit = unit,
                     session = session,
+                    reservation = nextReservationFor(
+                        reservations,
+                        unit.id,
+                        startOfDay(System.currentTimeMillis())
+                    ),
                     onClick = {
-                        if (session == null) startUnit = unit else detailSessionId = session.id
+                        if (session == null) {
+                            startPrefill = null
+                            startUnit = unit
+                        } else {
+                            detailSessionId = session.id
+                        }
                     }
                 )
             }
@@ -433,10 +620,31 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
         StartSessionDialog(
             dao = dao,
             unit = unit,
-            onDismiss = { startUnit = null },
-            onStarted = {
+            initialPaket = startPrefill?.durationMinutes ?: 120,
+            initialPrice = startPrefill?.price ?: 0L,
+            onDismiss = {
                 startUnit = null
+                startPrefill = null
+            },
+            onStarted = {
+                val usedReservation = startPrefill
+                startUnit = null
+                startPrefill = null
+                if (usedReservation != null) {
+                    scope.launch { dao.deleteReservation(usedReservation) }
+                }
                 notify("Sesi dimulai di " + unit.name)
+            }
+        )
+    }
+    if (showReservationForm) {
+        ReservationDialog(
+            units = units,
+            dao = dao,
+            onDismiss = { showReservationForm = false },
+            onSaved = {
+                showReservationForm = false
+                notify("Reservasi tersimpan")
             }
         )
     }
@@ -462,20 +670,43 @@ private fun UnitTab(dao: KasirDao, notify: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Unit) {
+private fun UnitRow(
+    unit: UnitEntity,
+    session: SessionEntity?,
+    reservation: ReservationEntity? = null,
+    onClick: () -> Unit
+) {
     // This row owns its clock: only the row with a running session recomposes
     // every second, not the whole tab.
     val now by rememberNowMillis(active = session != null)
     val paused = session?.status == STATUS_PAUSED
     val remaining = if (session != null && session.mode == MODE_PAKET) remainingMillis(session, now) else 0L
     val overtime = session != null && session.mode == MODE_PAKET && remaining < 0
+    // Penanda sesi mau habis: sisa waktu 5 menit terakhir.
+    val expiring = session != null && !paused && session.mode == MODE_PAKET &&
+        remaining in 1..(5 * 60_000L)
+    val pulse = rememberInfiniteTransition(label = "expiringPulse")
+    val dotAlpha by pulse.animateFloat(
+        initialValue = 1f,
+        targetValue = if (expiring) 0.25f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dotAlpha"
+    )
     // K6: satu nada lembut untuk semua keadaan; warna hanya pada
     // titik status kecil dan tombol Mulai. Waktu berjalan tetap
     // tampil di sisi kanan.
     val dot = when {
         paused -> MaterialTheme.colorScheme.tertiary
-        overtime -> MaterialTheme.colorScheme.error
+        overtime || expiring -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
+    }
+    val timerColor = if (expiring || overtime) {
+        MaterialTheme.colorScheme.error
+    } else {
+        Color.Unspecified
     }
     Card(
         onClick = onClick,
@@ -505,6 +736,10 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
                 }
                 Text(
                     when {
+                        session == null && reservation != null ->
+                            "Siap dipakai - Reservasi " +
+                                formatTime(reservation.startEpoch) +
+                                " (" + reservation.customerName + ")"
                         session == null -> "Siap dipakai"
                         paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
@@ -525,6 +760,7 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
+                                .alpha(if (expiring) dotAlpha else 1f)
                                 .background(dot, CircleShape)
                         )
                         val timerText = when {
@@ -538,6 +774,7 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             fontFamily = FontFamily.Monospace,
+                            color = timerColor,
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }
@@ -555,15 +792,215 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun ReservationDialog(
+    units: List<UnitEntity>,
+    dao: KasirDao,
+    onDismiss: () -> Unit,
+    onSaved: () -> Unit
+) {
+    var unit by remember { mutableStateOf(units.firstOrNull()) }
+    var name by remember { mutableStateOf("") }
+    var dateMillis by remember {
+        mutableStateOf(
+            java.time.LocalDate.now()
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+        )
+    }
+    val nextHour = LocalDateTime.now().plusHours(1).withMinute(0)
+    var hour by remember { mutableIntStateOf(nextHour.hour) }
+    var minute by remember { mutableIntStateOf(0) }
+    var duration by remember { mutableIntStateOf(120) }
+    var priceText by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val pickedDate = Instant.ofEpochMilli(dateMillis)
+        .atZone(ZoneOffset.UTC)
+        .toLocalDate()
+    val startEpoch = LocalDateTime.of(
+        pickedDate,
+        LocalTime.of(hour, minute)
+    ).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reservasi Unit") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Unit",
+                    style = MaterialTheme.typography.labelLarge
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 6.dp)
+                ) {
+                    units.forEach { u ->
+                        FilterChip(
+                            selected = unit?.id == u.id,
+                            onClick = { unit = u },
+                            label = { Text(u.name) }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nama pemesan") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(formatDateTime(startEpoch).substringBefore(","))
+                    }
+                    OutlinedButton(
+                        onClick = { showTimePicker = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(formatTime(startEpoch))
+                    }
+                }
+                Text(
+                    "Durasi paket",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(top = 14.dp)
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 6.dp)
+                ) {
+                    PAKET_OPTIONS.forEach { m ->
+                        FilterChip(
+                            selected = duration == m,
+                            onClick = { duration = m },
+                            label = { Text(formatMinutes(m)) }
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = groupThousands(priceText),
+                    onValueChange = { v ->
+                        priceText = v.filter { c -> c.isDigit() }
+                    },
+                    label = { Text("Harga paket (Rp, boleh kosong)") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = unit != null && name.isNotBlank(),
+                onClick = {
+                    val u = unit
+                    if (u != null) {
+                        scope.launch {
+                            dao.insertReservation(
+                                ReservationEntity(
+                                    unitId = u.id,
+                                    unitName = u.name,
+                                    customerName = name.trim(),
+                                    startEpoch = startEpoch,
+                                    durationMinutes = duration,
+                                    price = priceText.toLongOrNull() ?: 0L
+                                )
+                            )
+                            onSaved()
+                        }
+                    }
+                }
+            ) { Text("Simpan") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Batal") }
+        }
+    )
+    if (showDatePicker) {
+        val dateState = rememberDatePickerState(
+            initialSelectedDateMillis = dateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dateState.selectedDateMillis?.let { dateMillis = it }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Batal")
+                }
+            }
+        ) {
+            DatePicker(state = dateState, showModeToggle = false)
+        }
+    }
+    if (showTimePicker) {
+        val timeState = rememberTimePickerState(
+            initialHour = hour,
+            initialMinute = minute,
+            is24Hour = true
+        )
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Jam Mulai") },
+            text = { TimePicker(state = timeState) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        hour = timeState.hour
+                        minute = timeState.minute
+                        showTimePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun StartSessionDialog(
     dao: KasirDao,
     unit: UnitEntity,
+    initialPaket: Int = 120,
+    initialPrice: Long = 0L,
     onDismiss: () -> Unit,
     onStarted: () -> Unit
 ) {
-    var paket by remember { mutableIntStateOf(120) }
-    var durationText by remember { mutableStateOf("2") }
-    var priceText by remember { mutableStateOf("") }
+    // Nilai awal bisa datang dari reservasi yang dimulai.
+    var paket by remember { mutableIntStateOf(initialPaket) }
+    var durationText by remember {
+        mutableStateOf(
+            if (initialPaket % 60 == 0) (initialPaket / 60).toString() else ""
+        )
+    }
+    var priceText by remember {
+        mutableStateOf(if (initialPrice > 0) initialPrice.toString() else "")
+    }
     val scope = rememberCoroutineScope()
     val price = priceText.toLongOrNull() ?: 0L
     // P2: mulai sesi adalah halaman penuh, bukan dialog - ruang

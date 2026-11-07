@@ -11,14 +11,15 @@ import org.json.JSONObject
 // dibagikan ke mana saja (WhatsApp, Drive, ...), dan dipulihkan lagi dari
 // berkas yang sama. Formatnya sengaja polos:
 // { app, version, exportedAtMillis, units[], snacks[], sessions[],
-//   sessionSnacks[], snackSales[] }
+//   sessionSnacks[], snackSales[], reservations[] }
 data class BackupData(
     val exportedAtMillis: Long,
     val units: List<UnitEntity>,
     val snacks: List<SnackEntity>,
     val sessions: List<SessionEntity>,
     val sessionSnacks: List<SessionSnackEntity>,
-    val snackSales: List<SnackSaleEntity>
+    val snackSales: List<SnackSaleEntity>,
+    val reservations: List<ReservationEntity> = emptyList()
 )
 
 suspend fun collectBackup(dao: KasirDao, exportedAtMillis: Long): BackupData =
@@ -28,7 +29,8 @@ suspend fun collectBackup(dao: KasirDao, exportedAtMillis: Long): BackupData =
         snacks = dao.allSnacksOnce(),
         sessions = dao.allSessionsOnce(),
         sessionSnacks = dao.allSessionSnacksOnce(),
-        snackSales = dao.allSnackSalesOnce()
+        snackSales = dao.allSnackSalesOnce(),
+        reservations = dao.allReservationsOnce()
     )
 
 fun backupFileName(exportedAtMillis: Long): String =
@@ -43,6 +45,7 @@ suspend fun applyBackup(db: AppDatabase, data: BackupData) {
     db.withTransaction {
         dao.clearSessionSnacks()
         dao.clearSnackSales()
+        dao.clearReservations()
         dao.clearSessions()
         dao.clearSnacks()
         dao.clearUnits()
@@ -51,6 +54,7 @@ suspend fun applyBackup(db: AppDatabase, data: BackupData) {
         data.sessions.forEach { dao.insertSession(it) }
         data.sessionSnacks.forEach { dao.insertSessionSnack(it) }
         data.snackSales.forEach { dao.insertSnackSale(it) }
+        data.reservations.forEach { dao.insertReservation(it) }
     }
 }
 
@@ -130,6 +134,19 @@ fun backupToJson(data: BackupData): String {
             })
         }
     })
+    root.put("reservations", JSONArray().apply {
+        data.reservations.forEach { r ->
+            put(JSONObject().apply {
+                put("id", r.id)
+                put("unitId", r.unitId)
+                put("unitName", r.unitName)
+                put("customerName", r.customerName)
+                put("startEpoch", r.startEpoch)
+                put("durationMinutes", r.durationMinutes)
+                put("price", r.price)
+            })
+        }
+    })
     return root.toString(2)
 }
 
@@ -203,6 +220,19 @@ fun parseBackup(text: String): BackupData {
                 epoch = o.getLong("epoch"),
                 paymentMethod = o.getString("paymentMethod")
             )
-        }
+        },
+        // Backup lama belum punya reservasi: anggap kosong, jangan gagal.
+        reservations = root.optJSONArray("reservations")?.mapItems { o ->
+            ReservationEntity(
+                id = o.getLong("id"),
+                unitId = o.getLong("unitId"),
+                unitName = o.getString("unitName"),
+                customerName = o.getString("customerName"),
+                startEpoch = o.getLong("startEpoch"),
+                durationMinutes = o.getInt("durationMinutes"),
+                price = o.optLong("price", 0)
+            )
+        } ?: emptyList()
     )
 }
+

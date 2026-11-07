@@ -1,5 +1,6 @@
 package id.kasir.app
 
+import id.kasir.app.data.ReservationEntity
 import id.kasir.app.data.SessionEntity
 import id.kasir.app.data.UnitEntity
 import java.text.NumberFormat
@@ -129,6 +130,17 @@ fun billedMinutes(session: SessionEntity, now: Long): Int =
 
 fun remainingMillis(session: SessionEntity, now: Long): Long =
     session.paketMinutes * 60000L - elapsedMillis(session, now)
+
+// Reservasi terdekat untuk satu unit mulai dari [fromMs] (inklusif):
+// yang jam mulainya paling awal di antara yang belum lewat.
+fun nextReservationFor(
+    reservations: List<ReservationEntity>,
+    unitId: Long,
+    fromMs: Long
+): ReservationEntity? =
+    reservations
+        .filter { it.unitId == unitId && it.startEpoch >= fromMs }
+        .minByOrNull { it.startEpoch }
 
 fun formatHms(millis: Long): String {
     val totalSec = (millis / 1000).coerceAtLeast(0)

@@ -77,3 +77,18 @@ data class SnackSaleEntity(
     val paymentMethod: String
 )
 
+
+// Reservasi unit: pelanggan memesan satu unit untuk jam tertentu.
+// Sifatnya penanda dan pengingat; memulai sesi dari reservasi mengisi
+// durasi + harga paketnya ke formulir mulai sesi.
+@Immutable
+@Entity(tableName = "reservations")
+data class ReservationEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val unitId: Long,
+    val unitName: String,
+    val customerName: String,
+    val startEpoch: Long,
+    val durationMinutes: Int,
+    val price: Long = 0
+)

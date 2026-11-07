@@ -1,5 +1,6 @@
 package id.kasir.app
 
+import id.kasir.app.data.ReservationEntity
 import id.kasir.app.data.SessionEntity
 import id.kasir.app.data.UnitEntity
 import java.util.Calendar
@@ -214,5 +215,34 @@ class BillingTest {
         val s = session(mode = MODE_PAKET, paketMinutes = 120, hourlyRate = 6_000L)
         assertEquals(12_000L, rentalCost(s, 120 * min))
         assertEquals(120, billedMinutes(s, 120 * min))
+    }
+
+    private fun reservation(id: Long, unitId: Long, start: Long) = ReservationEntity(
+        id = id,
+        unitId = unitId,
+        unitName = "TV",
+        customerName = "Budi",
+        startEpoch = start,
+        durationMinutes = 120
+    )
+
+    @Test
+    fun nextReservationPicksEarliestUpcomingForUnit() {
+        val list = listOf(
+            reservation(1, 7, 3_000L),
+            reservation(2, 7, 1_500L),
+            reservation(3, 8, 1_200L),
+            reservation(4, 7, 500L)
+        )
+        assertEquals(2L, nextReservationFor(list, 7, 1_000L)?.id)
+        assertEquals(3L, nextReservationFor(list, 8, 1_000L)?.id)
+    }
+
+    @Test
+    fun nextReservationSkipsPastAndUnknownUnits() {
+        val list = listOf(reservation(1, 7, 500L))
+        assertEquals(null, nextReservationFor(list, 7, 1_000L))
+        assertEquals(null, nextReservationFor(list, 9, 0L))
+        assertEquals(null, nextReservationFor(emptyList(), 7, 0L))
     }
 }
