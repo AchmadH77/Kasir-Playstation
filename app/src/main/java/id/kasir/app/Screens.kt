@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fastfood
@@ -84,6 +85,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
@@ -724,6 +726,113 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Text("Tambah", modifier = Modifier.padding(start = 6.dp))
             }
+        }
+        // Peringatan stok menipis: muncul hanya bila ada menu kritis.
+        val lowSnacks = lowStockSnacks(snacks)
+        var showLowDialog by remember { mutableStateOf(false) }
+        if (lowSnacks.isNotEmpty()) {
+            Card(
+                onClick = { showLowDialog = true },
+                colors = CardDefaults.cardColors(
+                    containerColor =
+                        MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor =
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = 14.dp,
+                        vertical = 10.dp
+                    ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.WarningAmber,
+                        contentDescription = null
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 10.dp)
+                    ) {
+                        Text(
+                            lowSnacks.size.toString() +
+                                " menu stoknya menipis",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            lowSnacks.joinToString(", ") { it.name },
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text(
+                        "Lihat",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+        if (showLowDialog) {
+            AlertDialog(
+                onDismissRequest = { showLowDialog = false },
+                title = { Text("Stok Menipis") },
+                text = {
+                    Column {
+                        Text(
+                            "Menu berikut stoknya tinggal sedikit atau " +
+                                "habis. Ketuk menunya di daftar untuk " +
+                                "menambah stok.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme
+                                .colorScheme.onSurfaceVariant
+                        )
+                        lowSnacks.forEach { snack ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    snack.name,
+                                    style = MaterialTheme
+                                        .typography.bodyLarge,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    if (snack.stock == 0) {
+                                        "Habis"
+                                    } else {
+                                        "Sisa " + snack.stock
+                                    },
+                                    style = MaterialTheme
+                                        .typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (snack.stock == 0) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.tertiary
+                                    }
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLowDialog = false }) {
+                        Text("Tutup")
+                    }
+                }
+            )
         }
         if (snacks.isEmpty()) {
             Text(

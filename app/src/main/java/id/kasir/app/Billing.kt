@@ -2,6 +2,7 @@ package id.kasir.app
 
 import id.kasir.app.data.ReservationEntity
 import id.kasir.app.data.SessionEntity
+import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.UnitEntity
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -146,6 +147,15 @@ fun nextReservationFor(
     reservations
         .filter { it.unitId == unitId && it.startEpoch >= fromMs }
         .minByOrNull { it.startEpoch }
+
+// Menu makanan dianggap stoknya menipis pada jumlah segini atau kurang
+// (0 berarti habis). Dipakai lencana di tab Makanan dan kartu peringatan.
+const val LOW_STOCK_THRESHOLD = 3
+
+fun lowStockSnacks(snacks: List<SnackEntity>): List<SnackEntity> =
+    snacks
+        .filter { it.stock <= LOW_STOCK_THRESHOLD }
+        .sortedBy { it.stock }
 
 fun formatHms(millis: Long): String {
     val totalSec = (millis / 1000).coerceAtLeast(0)

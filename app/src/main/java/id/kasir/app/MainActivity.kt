@@ -209,6 +209,9 @@ private fun KasirApp(
             onOpenSignalConsumed()
         }
     }
+    // Lencana stok menipis di ikon tab Makanan.
+    val snacksAll by dao.snacksFlow().collectAsState(initial = emptyList())
+    val lowFoodCount = lowStockSnacks(snacksAll).size
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val notify: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
@@ -322,6 +325,7 @@ private fun KasirApp(
                     FloatingDock(
                         selected = tab,
                         onSelect = { tab = it },
+                        foodBadge = lowFoodCount,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
@@ -422,6 +426,7 @@ private fun KasirApp(
 private fun FloatingDock(
     selected: Int,
     onSelect: (Int) -> Unit,
+    foodBadge: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val items = listOf(
@@ -476,6 +481,32 @@ private fun FloatingDock(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         )
+                        // Lencana jumlah menu stok menipis di tab Makanan.
+                        if (index == 1 && foodBadge > 0) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(18.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.error,
+                                        CircleShape
+                                    )
+                            ) {
+                                Text(
+                                    if (foodBadge > 9) {
+                                        "9+"
+                                    } else {
+                                        foodBadge.toString()
+                                    },
+                                    style = MaterialTheme
+                                        .typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme
+                                        .colorScheme.onError
+                                )
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(

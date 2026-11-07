@@ -2,6 +2,7 @@ package id.kasir.app
 
 import id.kasir.app.data.ReservationEntity
 import id.kasir.app.data.SessionEntity
+import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.UnitEntity
 import java.util.Calendar
 import org.junit.Assert.assertEquals
@@ -244,6 +245,23 @@ class BillingTest {
         assertEquals(null, nextReservationFor(list, 7, 1_000L))
         assertEquals(null, nextReservationFor(list, 9, 0L))
         assertEquals(null, nextReservationFor(emptyList(), 7, 0L))
+    }
+
+    @Test
+    fun lowStockSnacksFiltersAtThresholdAndSortsAscending() {
+        fun snack(name: String, stock: Int) =
+            SnackEntity(name = name, price = 1000, stock = stock)
+        val list = listOf(
+            snack("A", 5),
+            snack("B", 0),
+            snack("C", 3),
+            snack("D", 4),
+            snack("E", 1)
+        )
+        assertEquals(
+            listOf("B", "E", "C"),
+            lowStockSnacks(list).map { it.name }
+        )
     }
 
     @Test
