@@ -52,4 +52,4 @@ On first launch the app is seeded with sample data (6 TV units and 6 snack menu 
 
 ## License
 
-MIT — see the [LICENSE](LICENSE) file.
+All Rights Reserved — see the [LICENSE](LICENSE) file.
