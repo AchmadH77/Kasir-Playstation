@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fastfood
@@ -1883,6 +1884,30 @@ fun LainnyaTab(
                     )
                 },
                 trailingContent = { Switch(checked = dark, onCheckedChange = onDarkChange) }
+            )
+            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
+            ListItem(
+                headlineContent = { Text("Tes Notifikasi") },
+                supportingContent = {
+                    Text("Kirim contoh notifikasi waktu habis sekarang")
+                },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                trailingContent = {
+                    TextButton(
+                        onClick = {
+                            postTestSessionNotification(context)
+                            notify(
+                                "Tes notifikasi terkirim - cek panel notifikasi"
+                            )
+                        }
+                    ) { Text("Kirim") }
+                }
             )
             HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
             ListItem(

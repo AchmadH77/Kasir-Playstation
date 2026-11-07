@@ -106,6 +106,9 @@ interface KasirDao {
     @Query("SELECT * FROM reservations ORDER BY startEpoch ASC")
     fun reservationsFlow(): Flow<List<ReservationEntity>>
 
+    @Query("SELECT * FROM reservations WHERE id = :id LIMIT 1")
+    suspend fun reservationOnce(id: Long): ReservationEntity?
+
     @Insert
     suspend fun insertReservation(reservation: ReservationEntity): Long
 

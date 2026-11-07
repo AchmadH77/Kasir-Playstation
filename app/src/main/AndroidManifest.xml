@@ -30,6 +30,14 @@
             android:exported="false" />
 
         <receiver
+            android:name=".SessionSnoozeReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ReservationReminderReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>

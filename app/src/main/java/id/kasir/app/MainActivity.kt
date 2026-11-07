@@ -355,16 +355,29 @@ private fun KasirApp(
             (alarmedIds - shouldIds).forEach {
                 SessionAlarm.cancel(alarmContext, it)
             }
-            shouldAlarm.forEach {
-                SessionAlarm.schedule(
-                    alarmContext,
-                    it.id,
-                    it.unitName,
-                    it.paketMinutes,
-                    paketEndEpoch(it)
-                )
-            }
+            shouldAlarm.forEach { SessionAlarm.schedule(alarmContext, it) }
             alarmedIds = shouldIds
+        }
+        // Pengingat reservasi: 15 menit sebelum jam mulai, untuk
+        // reservasi mulai hari ini dan seterusnya.
+        val allReservations by dao.reservationsFlow()
+            .collectAsState(initial = emptyList())
+        var alarmedReservationIds by remember {
+            mutableStateOf<Set<Long>>(emptySet())
+        }
+        LaunchedEffect(allReservations) {
+            val todayStart = startOfDay(System.currentTimeMillis())
+            val upcomingReservations = allReservations.filter {
+                it.startEpoch >= todayStart
+            }
+            val resIds = upcomingReservations.map { it.id }.toSet()
+            (alarmedReservationIds - resIds).forEach {
+                SessionAlarm.cancelReservation(alarmContext, it)
+            }
+            upcomingReservations.forEach {
+                SessionAlarm.scheduleReservation(alarmContext, it)
+            }
+            alarmedReservationIds = resIds
         }
         if (expiredPopup != null) {
             AlertDialog(
