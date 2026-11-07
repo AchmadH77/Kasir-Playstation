@@ -83,6 +83,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -1809,6 +1810,44 @@ private fun CompositionRow(label: String, value: Long, grandTotal: Long, color: 
     }
 }
 
+// Ubin pintasan LN3: ikon di atas, label tebal, keterangan kecil.
+@Composable
+private fun ShortcutTile(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        modifier = modifier.height(106.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 10.dp)
+            )
+            Text(
+                sub,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
 // ---------- Tab Lainnya ----------
 
 @Composable
@@ -1854,7 +1893,8 @@ fun LainnyaTab(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Header toko: identitas yang tampil di struk.
+        // LN3: kartu toko ramping - satu baris, tombol "Ubah" di kanan;
+        // versi aplikasi tetap tampil di baris Tentang di bawah.
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -1862,127 +1902,105 @@ fun LainnyaTab(
             ),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(16.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Tv,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                    Column(modifier = Modifier.padding(start = 14.dp)) {
-                        Text(
-                            storeName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Kasir Rental PlayStation",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.padding(top = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primary,
+                            RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Button(
-                        onClick = {
-                            storeNameText = storeName
-                            showStoreDialog = true
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) { Text("Ubah Nama") }
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        "v1.0.0",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-        Column(modifier = Modifier.padding(top = 16.dp)) {
-            ListItem(
-                headlineContent = { Text("Atur Unit & Tarif") },
-                leadingContent = {
                     Icon(
                         Icons.Default.Tv,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
                     )
-                },
-                trailingContent = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            units.size.toString() + " unit",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
-                    }
-                },
-                modifier = Modifier.clickable { onOpenUnitManage() }
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
-            ListItem(
-                headlineContent = { Text("Backup Data") },
-                supportingContent = { Text("Simpan semua data ke satu berkas") },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.Backup,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingContent = {
-                    Icon(Icons.Default.ChevronRight, contentDescription = null)
-                },
-                modifier = Modifier.clickable {
-                    scope.launch {
-                        val data = collectBackup(dao, System.currentTimeMillis())
-                        shareTextFile(
-                            context = context,
-                            fileName = backupFileName(data.exportedAtMillis),
-                            content = backupToJson(data),
-                            mimeType = "application/json",
-                            chooserTitle = "Bagikan Backup Kasir"
-                        )
-                    }
                 }
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
-            ListItem(
-                headlineContent = { Text("Restore Data") },
-                supportingContent = { Text("Pulihkan data dari berkas backup") },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.SettingsBackupRestore,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                Column(modifier = Modifier.padding(start = 12.dp)) {
+                    Text(
+                        storeName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                },
-                trailingContent = {
-                    Icon(Icons.Default.ChevronRight, contentDescription = null)
-                },
-                modifier = Modifier.clickable {
-                    restoreLauncher.launch(arrayOf("application/json"))
+                    Text(
+                        "Kasir Rental PlayStation",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    storeNameText = storeName
+                    showStoreDialog = true
+                }) { Text("Ubah") }
+            }
+        }
+        // LN3: empat aksi utama jadi ubin grid 2x2 agar mudah diketuk;
+        // Mode Gelap dan Tentang Kasir tetap baris di bawahnya.
+        Column(
+            modifier = Modifier.padding(top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ShortcutTile(
+                    icon = Icons.Default.Tv,
+                    label = "Atur Unit & Tarif",
+                    sub = units.size.toString() + " unit",
+                    modifier = Modifier.weight(1f),
+                    onClick = onOpenUnitManage
+                )
+                ShortcutTile(
+                    icon = Icons.Default.Backup,
+                    label = "Backup Data",
+                    sub = "1 berkas",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        scope.launch {
+                            val data = collectBackup(
+                                dao,
+                                System.currentTimeMillis()
+                            )
+                            shareTextFile(
+                                context = context,
+                                fileName = backupFileName(data.exportedAtMillis),
+                                content = backupToJson(data),
+                                mimeType = "application/json",
+                                chooserTitle = "Bagikan Backup Kasir"
+                            )
+                        }
+                    }
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ShortcutTile(
+                    icon = Icons.Default.SettingsBackupRestore,
+                    label = "Restore Data",
+                    sub = "dari berkas",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        restoreLauncher.launch(arrayOf("application/json"))
+                    }
+                )
+                ShortcutTile(
+                    icon = Icons.Default.Notifications,
+                    label = "Tes Notifikasi",
+                    sub = "Kirim contoh",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        postTestSessionNotification(context)
+                        notify(
+                            "Tes notifikasi terkirim - cek panel notifikasi"
+                        )
+                    }
+                )
+            }
+        }
+        Column(modifier = Modifier.padding(top = 8.dp)) {
             ListItem(
                 headlineContent = { Text("Mode Gelap") },
                 leadingContent = {
@@ -1992,30 +2010,8 @@ fun LainnyaTab(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 },
-                trailingContent = { Switch(checked = dark, onCheckedChange = onDarkChange) }
-            )
-            HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
-            ListItem(
-                headlineContent = { Text("Tes Notifikasi") },
-                supportingContent = {
-                    Text("Kirim contoh notifikasi waktu habis sekarang")
-                },
-                leadingContent = {
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
                 trailingContent = {
-                    TextButton(
-                        onClick = {
-                            postTestSessionNotification(context)
-                            notify(
-                                "Tes notifikasi terkirim - cek panel notifikasi"
-                            )
-                        }
-                    ) { Text("Kirim") }
+                    Switch(checked = dark, onCheckedChange = onDarkChange)
                 }
             )
             HorizontalDivider(modifier = Modifier.padding(start = 52.dp))
