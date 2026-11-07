@@ -61,6 +61,9 @@ interface KasirDao {
     @Query("SELECT * FROM sessions WHERE status = 'FINISHED' ORDER BY endEpoch DESC")
     fun finishedSessionsFlow(): Flow<List<SessionEntity>>
 
+    @Query("SELECT * FROM sessions WHERE id = :id LIMIT 1")
+    suspend fun sessionOnce(id: Long): SessionEntity?
+
     @Insert
     suspend fun insertSession(session: SessionEntity): Long
 

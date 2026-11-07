@@ -131,6 +131,11 @@ fun billedMinutes(session: SessionEntity, now: Long): Int =
 fun remainingMillis(session: SessionEntity, now: Long): Long =
     session.paketMinutes * 60000L - elapsedMillis(session, now)
 
+// Jam dinding saat paket sesi berakhir, dengan asumsi tidak ada jeda
+// tambahan mulai sekarang. Dipakai untuk menjadwalkan alarm notifikasi.
+fun paketEndEpoch(session: SessionEntity): Long =
+    session.startEpoch + session.pausedMillis + session.paketMinutes * 60000L
+
 // Reservasi terdekat untuk satu unit mulai dari [fromMs] (inklusif):
 // yang jam mulainya paling awal di antara yang belum lewat.
 fun nextReservationFor(

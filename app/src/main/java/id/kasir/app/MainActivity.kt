@@ -125,12 +125,40 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    // Id sesi yang diminta dibuka dari ketukan notifikasi sistem.
+    private var openSessionSignal by mutableStateOf<Long?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            KasirApp()
+        ensureSessionChannel(this)
+        if (android.os.Build.VERSION.SDK_INT >=
+            android.os.Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                1001
+            )
         }
+        openSessionSignal = intent
+            ?.getLongExtra(EXTRA_OPEN_SESSION, -1L)
+            ?.takeIf { it > 0 }
+        setContent {
+            KasirApp(
+                openSignal = openSessionSignal,
+                onOpenSignalConsumed = { openSessionSignal = null }
+            )
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openSessionSignal = intent
+            .getLongExtra(EXTRA_OPEN_SESSION, -1L)
+            .takeIf { it > 0 }
     }
 }
 
@@ -151,7 +179,10 @@ private fun expressiveTransform(motionScheme: MotionScheme, direction: Int): Con
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun KasirApp() {
+private fun KasirApp(
+    openSignal: Long? = null,
+    onOpenSignalConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE) }
     val dao = remember { DatabaseProvider.get(context).dao() }
@@ -166,6 +197,18 @@ private fun KasirApp() {
     var showUnitManage by remember { mutableStateOf(false) }
     // Sinyal dari pop-up waktu habis: tab Unit membuka rincian sesi ini.
     var openRequest by remember { mutableStateOf<Long?>(null) }
+    // Sesi yang pop-up/notifikasinya sudah ditangani pada jalan aplikasi ini.
+    var expiredNotified by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    // Sinyal dari notifikasi sistem: buka sesi ini tanpa pop-up ganda.
+    LaunchedEffect(openSignal) {
+        val sid = openSignal
+        if (sid != null) {
+            expiredNotified = expiredNotified + sid
+            tab = 0
+            openRequest = sid
+            onOpenSignalConsumed()
+        }
+    }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val notify: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
@@ -293,10 +336,35 @@ private fun KasirApp() {
             it.mode == MODE_PAKET && it.status != STATUS_PAUSED
         }
         val appNow by rememberNowMillis(active = anyPaketRunning)
-        var expiredNotified by remember { mutableStateOf<Set<Long>>(emptySet()) }
         val expiredPopup = activeSessions.firstOrNull {
             it.mode == MODE_PAKET && it.status != STATUS_PAUSED &&
                 remainingMillis(it, appNow) <= 0 && it.id !in expiredNotified
+        }
+        // Rekonsiliasi alarm sistem: setiap sesi paket yang berjalan punya
+        // alarm tepat di akhir paketnya, supaya notifikasi sistem muncul
+        // walau aplikasi tertutup. Sesi yang jeda/selesai/hilang dari
+        // daftar aktif alarmnya dibatalkan; perubahan durasi (tambah
+        // waktu) menjadwalkan ulang otomatis.
+        val alarmContext = LocalContext.current
+        var alarmedIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+        LaunchedEffect(activeSessions) {
+            val shouldAlarm = activeSessions.filter {
+                it.mode == MODE_PAKET && it.status != STATUS_PAUSED
+            }
+            val shouldIds = shouldAlarm.map { it.id }.toSet()
+            (alarmedIds - shouldIds).forEach {
+                SessionAlarm.cancel(alarmContext, it)
+            }
+            shouldAlarm.forEach {
+                SessionAlarm.schedule(
+                    alarmContext,
+                    it.id,
+                    it.unitName,
+                    it.paketMinutes,
+                    paketEndEpoch(it)
+                )
+            }
+            alarmedIds = shouldIds
         }
         if (expiredPopup != null) {
             AlertDialog(

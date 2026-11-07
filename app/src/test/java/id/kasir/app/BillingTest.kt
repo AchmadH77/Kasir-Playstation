@@ -245,4 +245,15 @@ class BillingTest {
         assertEquals(null, nextReservationFor(list, 9, 0L))
         assertEquals(null, nextReservationFor(emptyList(), 7, 0L))
     }
+
+    @Test
+    fun paketEndEpochAddsStartPausesAndDuration() {
+        val s = session(
+            mode = MODE_PAKET,
+            paketMinutes = 120,
+            startEpoch = 1_000_000L,
+            pausedMillis = 5 * min
+        )
+        assertEquals(1_000_000L + 5 * min + 120 * min, paketEndEpoch(s))
+    }
 }
