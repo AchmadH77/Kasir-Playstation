@@ -9,6 +9,9 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Reports: the "Ekspor Laporan" (CSV share) button is removed at
+  Achmad's request; the last-7-days and busiest-hours mini cards are
+  now equal height with their captions aligned at the bottom.
 - Reservations RC6D: the Unit tab's reservation card becomes a
   two-column grid of compact mini cards (max 4) under a section title;
   the "+ Tambah" button is now a filled navy pill matching the units'

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -1677,37 +1678,6 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 }
             }
         }
-        OutlinedButton(
-            onClick = {
-                val label = listOf("Hari Ini", "Minggu Ini", "Bulan Ini", "Semua")[period]
-                shareTextFile(
-                    context = context,
-                    fileName = "laporan-kasir-" + label.lowercase().replace(" ", "-") + ".csv",
-                    content = laporanCsv(
-                        storeName = storeName,
-                        periodLabel = label,
-                        generatedAtMillis = System.currentTimeMillis(),
-                        grandTotal = grandTotal,
-                        sessionTotal = sessionTotal,
-                        salesTotal = salesTotal,
-                        sessions = periodSessions,
-                        sales = periodSales,
-                        expenseTotal = expenseTotal,
-                        expenses = periodExpenses
-                    ),
-                    mimeType = "text/csv",
-                    chooserTitle = "Bagikan Laporan"
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 10.dp)
-        ) {
-            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Ekspor Laporan")
-        }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -1715,17 +1685,25 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
         ) {
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Card(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme
                                 .colorScheme.surfaceContainerHigh
                         )
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(12.dp)
+                        ) {
                             Text(
                                 "Pendapatan 7 Hari",
                                 style = MaterialTheme.typography.labelLarge,
@@ -1790,6 +1768,9 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                                     }
                                 }
                             }
+                            Spacer(
+                                modifier = Modifier.weight(1f)
+                            )
                             Text(
                                 if (maxDay > 0) {
                                     "Tertinggi: " +
@@ -1807,13 +1788,19 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                         }
                     }
                     Card(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme
                                 .colorScheme.surfaceContainerHigh
                         )
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(12.dp)
+                        ) {
                             Text(
                                 "Jam Tersibuk",
                                 style = MaterialTheme.typography.labelLarge,
@@ -1863,6 +1850,9 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                                     }
                                 }
                             }
+                            Spacer(
+                                modifier = Modifier.weight(1f)
+                            )
                             Text(
                                 if (maxHourly > 0) {
                                     "Paling ramai " +
