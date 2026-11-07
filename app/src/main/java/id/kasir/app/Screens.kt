@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -83,6 +85,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -1393,6 +1396,91 @@ private fun SnackFormDialog(
     )
 }
 
+// LP10: chip perbandingan pada kartu hero - selisih total terhadap
+// periode sebelumnya (kemarin / minggu lalu / bulan lalu).
+@Composable
+private fun DeltaChip(diff: Long, prevLabel: String, upColor: Color) {
+    val downColor = MaterialTheme.colorScheme.error
+    val flatColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val (bg, fg) = when {
+        diff > 0L -> upColor.copy(alpha = 0.16f) to upColor
+        diff < 0L -> downColor.copy(alpha = 0.16f) to downColor
+        else -> flatColor.copy(alpha = 0.12f) to flatColor
+    }
+    Surface(shape = RoundedCornerShape(percent = 50), color = bg) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            when {
+                diff > 0L -> Icon(
+                    Icons.Default.TrendingUp,
+                    contentDescription = null,
+                    tint = fg,
+                    modifier = Modifier.size(14.dp)
+                )
+                diff < 0L -> Icon(
+                    Icons.Default.TrendingDown,
+                    contentDescription = null,
+                    tint = fg,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            Text(
+                when {
+                    diff > 0L -> "+" + formatRupiahShort(diff) + " dari " + prevLabel
+                    diff < 0L -> "-" + formatRupiahShort(-diff) + " dari " + prevLabel
+                    else -> "Sama seperti " + prevLabel
+                },
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = fg,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+    }
+}
+
+// LP10: baris perbandingan kecil di kartu rincian - nilai periode
+// sebelumnya dengan panah arah berwarna.
+@Composable
+private fun DeltaLine(
+    current: Long,
+    prevValue: Long,
+    prevLabel: String,
+    upColor: Color,
+    downColor: Color,
+    flatColor: Color
+) {
+    val diff = current - prevValue
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        when {
+            diff > 0L -> Icon(
+                Icons.Default.TrendingUp,
+                contentDescription = null,
+                tint = upColor,
+                modifier = Modifier.size(13.dp)
+            )
+            diff < 0L -> Icon(
+                Icons.Default.TrendingDown,
+                contentDescription = null,
+                tint = downColor,
+                modifier = Modifier.size(13.dp)
+            )
+        }
+        Text(
+            prevLabel + " " + formatRupiah(prevValue),
+            style = MaterialTheme.typography.bodySmall,
+            color = when {
+                diff > 0L -> upColor
+                diff < 0L -> downColor
+                else -> flatColor
+            },
+            modifier = Modifier.padding(start = 4.dp)
+        )
+    }
+}
+
 // ---------- Tab Laporan ----------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1417,6 +1505,41 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     val sessionTotal = periodSessions.sumOf { it.total }
     val salesTotal = periodSales.sumOf { it.total }
     val grandTotal = sessionTotal + salesTotal
+    // LP10: jendela periode sebelumnya sebagai pembanding - kemarin,
+    // minggu lalu, atau bulan lalu. Periode "Semua" tanpa pembanding.
+    val prevLabel = when (period) {
+        0 -> "kemarin"
+        1 -> "minggu lalu"
+        else -> "bulan lalu"
+    }
+    val prevFrom = when (period) {
+        0 -> Calendar.getInstance().apply {
+            timeInMillis = from
+            add(Calendar.DAY_OF_YEAR, -1)
+        }.timeInMillis
+        1 -> Calendar.getInstance().apply {
+            timeInMillis = from
+            add(Calendar.DAY_OF_YEAR, -7)
+        }.timeInMillis
+        2 -> Calendar.getInstance().apply {
+            timeInMillis = from
+            add(Calendar.MONTH, -1)
+        }.timeInMillis
+        else -> 0L
+    }
+    val prevSessionTotal = if (period == 3) 0L else finished
+        .filter { (it.endEpoch ?: 0L) in prevFrom until from }
+        .sumOf { it.total }
+    val prevSalesTotal = if (period == 3) 0L else sales
+        .filter { it.epoch in prevFrom until from }
+        .sumOf { it.total }
+    val prevGrandTotal = prevSessionTotal + prevSalesTotal
+    // Hijau "naik" yang terbaca di tema terang maupun gelap.
+    val upGreen = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+        Color(0xFF4ADE80)
+    } else {
+        Color(0xFF1E7B34)
+    }
     // Grafik 7 hari terakhir (selalu 7 hari, tidak mengikuti pilihan periode):
     // total sesi selesai + penjualan jajan langsung per hari.
     val dayNames = listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
@@ -1452,12 +1575,42 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             }
         }
-        // L5 - Kartu Berdampingan: Playstation dan jajan (oranye) jadi dua
-        // kartu besar; total pendapatan jadi baris ringkasan di bawahnya.
-        Row(
+        // LP10: total jadi kartu hero di atas dengan chip perbandingan
+        // terhadap periode sebelumnya; dua kartu rincian di bawahnya,
+        // masing-masing dengan baris nilai periode sebelumnya.
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Total Pendapatan", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    formatRupiah(grandTotal),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                if (period != 3) {
+                    Box(modifier = Modifier.padding(top = 10.dp)) {
+                        DeltaChip(
+                            diff = grandTotal - prevGrandTotal,
+                            prevLabel = prevLabel,
+                            upColor = upGreen
+                        )
+                    }
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Card(
@@ -1480,6 +1633,19 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 2.dp)
                     )
+                    if (period != 3) {
+                        Box(modifier = Modifier.padding(top = 6.dp)) {
+                            DeltaLine(
+                                current = sessionTotal,
+                                prevValue = prevSessionTotal,
+                                prevLabel = prevLabel,
+                                upColor = upGreen,
+                                downColor = MaterialTheme.colorScheme.error,
+                                flatColor = MaterialTheme
+                                    .colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                 }
             }
             Card(
@@ -1502,38 +1668,22 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 2.dp)
                     )
+                    if (period != 3) {
+                        Box(modifier = Modifier.padding(top = 6.dp)) {
+                            DeltaLine(
+                                current = salesTotal,
+                                prevValue = prevSalesTotal,
+                                prevLabel = prevLabel,
+                                upColor = Color(0xFF4ADE80),
+                                downColor = Color(0xFFFF9D97),
+                                flatColor = Color(0xFFFFD9B0)
+                            )
+                        }
+                    }
                 }
             }
         }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 10.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Total Pendapatan",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    formatRupiah(grandTotal),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
+
         OutlinedButton(
             onClick = {
                 val label = listOf("Hari Ini", "Minggu Ini", "Bulan Ini", "Semua")[period]
