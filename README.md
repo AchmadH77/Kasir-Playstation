@@ -4,6 +4,8 @@
 
 A **PlayStation rental** cashier (billing) app for Android, written in Kotlin + Jetpack Compose with Material 3 Expressive. All data is stored locally on the phone (Room) — no server.
 
+See [CHANGELOG.md](CHANGELOG.md) for notable changes.
+
 ## Features
 
 - **Per-unit billing** — one clean, monochrome row per TV: the name and console type, a small status line, and for a running session a status dot plus a big monospace timer or package countdown. Timers are computed from the start time stored in the database, so they stay accurate even when the app is closed. Idle rows simply read "Siap dipakai": no price is shown per unit, because the operator decides the price of every session when it starts.
