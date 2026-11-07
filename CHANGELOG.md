@@ -9,6 +9,10 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Reports expenses PE6: the expense list becomes one compact card
+  (name + date rows, error-red amounts, dividers), the section title
+  now carries the period total, and the Catat button is a filled navy
+  pill matching the Mulai buttons.
 - Reports: the "Ekspor Laporan" (CSV share) button is removed at
   Achmad's request; the last-7-days and busiest-hours mini cards are
   now equal height with their captions aligned at the bottom.

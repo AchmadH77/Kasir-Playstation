@@ -1967,30 +1967,52 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 }
             }
             item {
+                // PE6: total periode terbaca di judul seksi; tombol
+                // Catat menjadi pill navy seperti tombol Mulai.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Pengeluaran",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    TextButton(onClick = {
-                        expenseEditing = null
-                        showExpenseForm = true
-                    }) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            "Catat",
-                            modifier = Modifier.padding(start = 4.dp)
+                            "Pengeluaran",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (expenseTotal > 0) {
+                            Text(
+                                "\u00b7 " + formatRupiah(expenseTotal),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            expenseEditing = null
+                            showExpenseForm = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF16324F),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(
+                            horizontal = 14.dp,
+                            vertical = 6.dp
+                        ),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text(
+                            "+ Catat",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -2004,36 +2026,69 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                     )
                 }
             }
-            items(periodExpenses, key = { it.id }) { expense ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            expenseEditing = expense
-                            showExpenseForm = true
+            if (periodExpenses.isNotEmpty()) {
+                item {
+                    // PE6: semua catatan periode ini dalam satu kartu
+                    // kompak; ketuk baris untuk mengubah.
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme
+                                .colorScheme.surfaceContainerHigh
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            periodExpenses.forEachIndexed { i, expense ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            expenseEditing = expense
+                                            showExpenseForm = true
+                                        }
+                                        .padding(
+                                            horizontal = 14.dp,
+                                            vertical = 10.dp
+                                        ),
+                                    verticalAlignment =
+                                        Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            expense.name,
+                                            style = MaterialTheme
+                                                .typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1
+                                        )
+                                        Text(
+                                            formatDateTime(expense.epoch),
+                                            style = MaterialTheme
+                                                .typography.bodySmall,
+                                            color = MaterialTheme
+                                                .colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Text(
+                                        formatRupiah(expense.amount),
+                                        style = MaterialTheme
+                                            .typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme
+                                            .colorScheme.error
+                                    )
+                                }
+                                if (i < periodExpenses.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier
+                                            .padding(horizontal = 14.dp),
+                                        color = MaterialTheme
+                                            .colorScheme.outlineVariant
+                                    )
+                                }
+                            }
                         }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            expense.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            formatDateTime(expense.epoch),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme
-                                .colorScheme.onSurfaceVariant
-                        )
                     }
-                    Text(
-                        formatRupiah(expense.amount),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
-                    )
                 }
             }
             item {
