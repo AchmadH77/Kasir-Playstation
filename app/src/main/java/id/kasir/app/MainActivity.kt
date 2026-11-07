@@ -469,84 +469,78 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
     val paused = session?.status == STATUS_PAUSED
     val remaining = if (session != null && session.mode == MODE_PAKET) remainingMillis(session, now) else 0L
     val overtime = session != null && session.mode == MODE_PAKET && remaining < 0
-    val container = when {
-        session == null -> MaterialTheme.colorScheme.surfaceContainerHigh
-        paused -> MaterialTheme.colorScheme.tertiaryContainer
-        overtime -> MaterialTheme.colorScheme.errorContainer
-        else -> MaterialTheme.colorScheme.primaryContainer
-    }
-    val accent = when {
+    // K6: satu nada lembut untuk semua keadaan; warna hanya pada
+    // titik status kecil dan tombol Mulai. Waktu berjalan tetap
+    // tampil di sisi kanan.
+    val dot = when {
         paused -> MaterialTheme.colorScheme.tertiary
         overtime -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = container),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(accent)
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 14.dp, top = 12.dp, bottom = 12.dp)
-            ) {
-                Text(
-                    unit.name + " - " + unit.consoleType,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        unit.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        unit.consoleType,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
                 Text(
                     when {
                         session == null -> "Siap dipakai"
                         paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
-                        session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes)
-                        else -> "Open billing"
+                        session.mode == MODE_PAKET ->
+                            "Berjalan - Paket " + formatMinutes(session.paketMinutes)
+                        else -> "Berjalan - Open billing"
                     },
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
             if (session == null) {
-                Column(
-                    modifier = Modifier.padding(end = 14.dp, top = 12.dp, bottom = 12.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        "Kosong",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Button(
-                        onClick = onClick,
-                        modifier = Modifier.padding(top = 6.dp)
-                    ) { Text("Mulai") }
-                }
+                OutlinedButton(onClick = onClick) { Text("Mulai") }
             } else {
-                Column(
-                    modifier = Modifier.padding(end = 14.dp, top = 12.dp, bottom = 12.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    val timerText = when {
-                        session.mode == MODE_OPEN -> formatHms(elapsedMillis(session, now))
-                        overtime -> "+" + formatHms(-remaining)
-                        else -> formatHms(remaining)
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(dot, CircleShape)
+                        )
+                        val timerText = when {
+                            session.mode == MODE_OPEN ->
+                                formatHms(elapsedMillis(session, now))
+                            overtime -> "+" + formatHms(-remaining)
+                            else -> formatHms(remaining)
+                        }
+                        Text(
+                            timerText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
                     }
-                    Text(
-                        timerText,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Monospace
-                    )
                     Text(
                         formatRupiah(rentalCost(session, now)) + " berjalan",
                         style = MaterialTheme.typography.bodySmall,
