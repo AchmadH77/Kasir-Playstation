@@ -93,7 +93,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import id.kasir.app.data.DatabaseProvider
 import id.kasir.app.data.KasirDao
 import id.kasir.app.data.SeedData
@@ -526,162 +528,215 @@ private fun StartSessionDialog(
     var priceText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val price = priceText.toLongOrNull() ?: 0L
-    AlertDialog(
+    // P2: mulai sesi adalah halaman penuh, bukan dialog - ruang
+    // lebih lega dan tombol Mulai Sesi menempel di bawah layar.
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Mulai Sesi - " + unit.name) },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    unit.consoleType,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "Durasi paket",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-                // M1: kartu durasi besar yang mudah diketuk. Memilih
-                // kartu mengisi kolom durasi di bawahnya; durasinya juga
-                // bisa diketik manual (mis. 8 jam) di kolom itu.
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null
+                        )
+                    }
+                    Text(
+                        "Mulai Sesi",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
                 Column(
-                    modifier = Modifier.padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    PAKET_OPTIONS.chunked(3).forEach { rowOptions ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            rowOptions.forEach { m ->
-                                val selected = paket == m
-                                Card(
-                                    onClick = {
-                                        paket = m
-                                        durationText = if (m % 60 == 0) {
-                                            (m / 60).toString()
-                                        } else {
-                                            ""
-                                        }
-                                    },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (selected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.surfaceContainerHigh
-                                        }
-                                    ),
-                                    border = if (selected) {
-                                        BorderStroke(
-                                            2.dp,
-                                            MaterialTheme.colorScheme.primary
-                                        )
-                                    } else {
-                                        null
-                                    },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(56.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            formatMinutes(m),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        if (selected) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(4.dp)
-                                                    .size(16.dp),
-                                                tint = MaterialTheme.colorScheme.primary
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF123D26),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                unit.name + " - " + unit.consoleType,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Unit kosong, siap dimulai",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFA9CDB5),
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        "Durasi paket",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(top = 20.dp)
+                    )
+                    // M1: kartu durasi besar yang mudah diketuk. Memilih
+                    // kartu mengisi kolom durasi di bawahnya; durasinya juga
+                    // bisa diketik manual (mis. 8 jam) di kolom itu.
+                    Column(
+                        modifier = Modifier.padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PAKET_OPTIONS.chunked(3).forEach { rowOptions ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                rowOptions.forEach { m ->
+                                    val selected = paket == m
+                                    Card(
+                                        onClick = {
+                                            paket = m
+                                            durationText = if (m % 60 == 0) {
+                                                (m / 60).toString()
+                                            } else {
+                                                ""
+                                            }
+                                        },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (selected) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceContainerHigh
+                                            }
+                                        ),
+                                        border = if (selected) {
+                                            BorderStroke(
+                                                2.dp,
+                                                MaterialTheme.colorScheme.primary
                                             )
+                                        } else {
+                                            null
+                                        },
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(56.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                formatMinutes(m),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            if (selected) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(4.dp)
+                                                        .size(16.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            repeat(3 - rowOptions.size) {
-                                Spacer(modifier = Modifier.weight(1f))
+                                repeat(3 - rowOptions.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
                         }
                     }
-                }
-                OutlinedTextField(
-                    value = durationText,
-                    onValueChange = { v ->
-                        val cleaned = v.filter { c -> c.isDigit() }.take(2)
-                        durationText = cleaned
-                        cleaned.toIntOrNull()?.let { paket = it * 60 }
-                    },
-                    label = { Text("Durasi (jam)") },
-                    placeholder = {
-                        Text(
-                            if (paket % 60 != 0) {
-                                formatMinutes(paket)
-                            } else {
-                                "mis. 2"
-                            }
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                )
-                OutlinedTextField(
-                    value = groupThousands(priceText),
-                    onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
-                    label = { Text("Harga paket (Rp)") },
-                    placeholder = { Text("mis. 10000") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 14.dp)
-                )
-                Text(
-                    "Harga diisi manual dan tetap: lewat dari durasi paket tidak menambah biaya.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = price > 0 && paket > 0,
-                onClick = {
-                    scope.launch {
-                        dao.insertSession(
-                            SessionEntity(
-                                unitId = unit.id,
-                                unitName = unit.name,
-                                consoleType = unit.consoleType,
-                                hourlyRate = effectiveRate(unit),
-                                mode = MODE_PAKET,
-                                paketMinutes = paket,
-                                paketPrice = price,
-                                startEpoch = System.currentTimeMillis()
+                    Text(
+                        "atau ketik manual:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 14.dp)
+                    )
+                    OutlinedTextField(
+                        value = durationText,
+                        onValueChange = { v ->
+                            val cleaned = v.filter { c -> c.isDigit() }.take(2)
+                            durationText = cleaned
+                            cleaned.toIntOrNull()?.let { paket = it * 60 }
+                        },
+                        label = { Text("Durasi (jam)") },
+                        placeholder = {
+                            Text(
+                                if (paket % 60 != 0) {
+                                    formatMinutes(paket)
+                                } else {
+                                    "mis. 2"
+                                }
                             )
-                        )
-                        onStarted()
-                    }
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                    )
+                    OutlinedTextField(
+                        value = groupThousands(priceText),
+                        onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
+                        label = { Text("Harga paket (Rp)") },
+                        placeholder = { Text("mis. 10000") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 14.dp)
+                    )
+                    Text(
+                        "Harga diisi manual dan tetap: lewat dari durasi paket tidak menambah biaya.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
-            ) { Text("Mulai") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Batal") }
+                Button(
+                    enabled = price > 0 && paket > 0,
+                    onClick = {
+                        scope.launch {
+                            dao.insertSession(
+                                SessionEntity(
+                                    unitId = unit.id,
+                                    unitName = unit.name,
+                                    consoleType = unit.consoleType,
+                                    hourlyRate = effectiveRate(unit),
+                                    mode = MODE_PAKET,
+                                    paketMinutes = paket,
+                                    paketPrice = price,
+                                    startEpoch = System.currentTimeMillis()
+                                )
+                            )
+                            onStarted()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                        .height(54.dp)
+                ) { Text("Mulai Sesi") }
+            }
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
