@@ -9,6 +9,10 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Expense logging (database v4): record operating expenses from Reports —
+  the hero card gains a net-profit line, an expense card and list follow
+  the selected period, and the CSV export includes expenses and net
+  profit. Expenses are part of backups too.
 - Busiest Hours chart in Reports: revenue per hour of day (00-23) for the
   selected period, with the peak hour highlighted and called out.
 - Reservations: book a unit ahead with date/time, package duration and an

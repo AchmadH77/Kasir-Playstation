@@ -30,10 +30,10 @@ This document summarizes the technical decisions behind Kasir (a PlayStation ren
 | `Billing.kt` | Pure logic: elapsed time, package remaining/end, rental cost, reservation & low-stock helpers, currency/date formatting |
 | `SessionAlarm.kt` | AlarmManager scheduling (session warning/end, reservation reminders), the notification receivers incl. snooze, and the boot rescheduler |
 | `Theme.kt` | The W2 steel-blue light/dark colour schemes for `MaterialExpressiveTheme` |
-| `data/Models.kt` | The six Room entities |
+| `data/Models.kt` | The seven Room entities |
 | `data/AppDatabase.kt` | `KasirDao`, `AppDatabase`, `DatabaseProvider` (singleton), `SeedData` |
 
-## Data model (Room, version 3)
+## Data model (Room, version 4)
 
 | Entity | Table | Key columns |
 |---|---|---|
@@ -43,8 +43,9 @@ This document summarizes the technical decisions behind Kasir (a PlayStation ren
 | `SessionSnackEntity` | `session_snacks` | session, snack, quantity, price at the time |
 | `SnackSaleEntity` | `snack_sales` | snack, quantity, price, timestamp, payment method (direct sales from the Snacks tab) |
 | `ReservationEntity` | `reservations` | unit + name snapshot, customer name, start epoch, duration minutes, agreed price |
+| `ExpenseEntity` | `expenses` | name, amount, epoch — operating expenses; Reports subtracts them for the net-profit line |
 
-Migrations: `MIGRATION_1_2` adds the package price (v2); `MIGRATION_2_3` adds the reservations table (v3).
+Migrations: `MIGRATION_1_2` adds the package price (v2); `MIGRATION_2_3` adds the reservations table (v3); `MIGRATION_3_4` adds the expenses table (v4).
 
 Prices are always stored as snapshots on the transaction rows, so changing a menu price never alters past records. Units no longer carry a typed hourly rate: `Billing.hourlyRateFor` maps the console type to a reference rate (PS3 5000, PS4 8000, PS5 10000) that is used only as a snapshot/fallback for legacy sessions — it is never displayed, because the operator types each session's price by hand.
 

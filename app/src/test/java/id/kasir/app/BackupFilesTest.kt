@@ -1,6 +1,7 @@
 package id.kasir.app
 
 import id.kasir.app.data.BackupData
+import id.kasir.app.data.ExpenseEntity
 import id.kasir.app.data.SessionEntity
 import id.kasir.app.data.SessionSnackEntity
 import id.kasir.app.data.SnackEntity
@@ -53,6 +54,11 @@ class BackupFilesTest {
                 id = 1, snackId = 1, snackName = "Kopi Hitam", price = 5000,
                 qty = 2, total = 10000, epoch = 4000, paymentMethod = "TUNAI"
             )
+        ),
+        expenses = listOf(
+            ExpenseEntity(
+                id = 1, name = "Restok Kopi", amount = 3000, epoch = 4500
+            )
         )
     )
 
@@ -87,7 +93,9 @@ class BackupFilesTest {
             sessionTotal = 17000,
             salesTotal = 10000,
             sessions = sampleData.sessions.filter { it.status == "FINISHED" },
-            sales = sampleData.snackSales
+            sales = sampleData.snackSales,
+            expenseTotal = 3000,
+            expenses = sampleData.expenses
         )
         assertTrue(csv.contains("Laporan Kasir - Hari Ini"))
         assertTrue(csv.contains("Total Pendapatan;27000"))
@@ -95,6 +103,9 @@ class BackupFilesTest {
         assertTrue(csv.contains("Makanan Langsung;10000"))
         assertTrue(csv.contains("Paket 2 jam;120;12000;5000;17000;QRIS"))
         assertTrue(csv.contains("Kopi Hitam;2;5000;10000;TUNAI"))
+        assertTrue(csv.contains("Pengeluaran;3000"))
+        assertTrue(csv.contains("Laba Bersih;24000"))
+        assertTrue(csv.contains("Restok Kopi;3000"))
     }
 
     @Test

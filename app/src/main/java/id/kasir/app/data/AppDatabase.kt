@@ -115,6 +115,19 @@ interface KasirDao {
     @Delete
     suspend fun deleteReservation(reservation: ReservationEntity)
 
+    // Pengeluaran operasional
+    @Query("SELECT * FROM expenses ORDER BY epoch DESC")
+    fun expensesFlow(): Flow<List<ExpenseEntity>>
+
+    @Insert
+    suspend fun insertExpense(expense: ExpenseEntity): Long
+
+    @Update
+    suspend fun updateExpense(expense: ExpenseEntity)
+
+    @Delete
+    suspend fun deleteExpense(expense: ExpenseEntity)
+
     // Backup & restore: baca semua baris sekaligus dan kosongkan tabel.
     @Query("SELECT * FROM units")
     suspend fun allUnitsOnce(): List<UnitEntity>
@@ -133,6 +146,12 @@ interface KasirDao {
 
     @Query("SELECT * FROM reservations")
     suspend fun allReservationsOnce(): List<ReservationEntity>
+
+    @Query("SELECT * FROM expenses")
+    suspend fun allExpensesOnce(): List<ExpenseEntity>
+
+    @Query("DELETE FROM expenses")
+    suspend fun clearExpenses()
 
     @Query("DELETE FROM reservations")
     suspend fun clearReservations()
@@ -160,9 +179,10 @@ interface KasirDao {
         SessionEntity::class,
         SessionSnackEntity::class,
         SnackSaleEntity::class,
-        ReservationEntity::class
+        ReservationEntity::class,
+        ExpenseEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -193,6 +213,19 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+// v4: tabel expenses untuk fitur Catat Pengeluaran (laba bersih).
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS expenses (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "name TEXT NOT NULL, " +
+                "amount INTEGER NOT NULL, " +
+                "epoch INTEGER NOT NULL)"
+        )
+    }
+}
+
 object DatabaseProvider {
     @Volatile
     private var instance: AppDatabase? = null
@@ -203,7 +236,7 @@ object DatabaseProvider {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "kasir.db"
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
         }
     }
 }

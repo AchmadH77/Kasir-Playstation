@@ -58,12 +58,15 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Surface
@@ -105,6 +108,7 @@ import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.SnackSaleEntity
 import id.kasir.app.data.BackupData
 import id.kasir.app.data.DatabaseProvider
+import id.kasir.app.data.ExpenseEntity
 import id.kasir.app.data.UnitEntity
 import id.kasir.app.data.applyBackup
 import id.kasir.app.data.backupFileName
@@ -114,7 +118,14 @@ import id.kasir.app.data.decryptBackup
 import id.kasir.app.data.encryptBackup
 import id.kasir.app.data.isEncryptedBackup
 import id.kasir.app.data.parseBackup
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Locale
 import androidx.core.content.FileProvider
 import java.io.File
 import kotlinx.coroutines.launch
@@ -634,7 +645,9 @@ fun laporanCsv(
     sessionTotal: Long,
     salesTotal: Long,
     sessions: List<SessionEntity>,
-    sales: List<SnackSaleEntity>
+    sales: List<SnackSaleEntity>,
+    expenseTotal: Long,
+    expenses: List<ExpenseEntity>
 ): String {
     val sb = StringBuilder()
     sb.appendLine(csvCell(storeName))
@@ -645,6 +658,8 @@ fun laporanCsv(
     sb.appendLine("Total Pendapatan;" + grandTotal)
     sb.appendLine("Playstation;" + sessionTotal)
     sb.appendLine("Makanan Langsung;" + salesTotal)
+    sb.appendLine("Pengeluaran;" + expenseTotal)
+    sb.appendLine("Laba Bersih;" + (grandTotal - expenseTotal))
     sb.appendLine()
     sb.appendLine("RIWAYAT SESI")
     sb.appendLine("Tanggal Selesai;Unit;Konsol;Mode;Durasi (menit);Sewa;Makanan di Sesi;Total;Metode")
@@ -671,6 +686,15 @@ fun laporanCsv(
             formatDateTime(sale.epoch) + ";" + csvCell(sale.snackName) + ";" +
                 sale.qty + ";" + sale.price + ";" + sale.total + ";" +
                 sale.paymentMethod
+        )
+    }
+    sb.appendLine()
+    sb.appendLine("PENGELUARAN")
+    sb.appendLine("Waktu;Nama;Nominal")
+    expenses.forEach { expense ->
+        sb.appendLine(
+            formatDateTime(expense.epoch) + ";" + csvCell(expense.name) + ";" +
+                expense.amount
         )
     }
     return sb.toString()
@@ -1510,6 +1534,9 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     val sales by dao.snackSalesFlow().collectAsState(initial = emptyList())
     var period by remember { mutableIntStateOf(0) }
     var receiptSession by remember { mutableStateOf<SessionEntity?>(null) }
+    val expenses by dao.expensesFlow().collectAsState(initial = emptyList())
+    var expenseEditing by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var showExpenseForm by remember { mutableStateOf(false) }
     val nowMs = System.currentTimeMillis()
     val from = when (period) {
         0 -> startOfDay(nowMs)
@@ -1582,6 +1609,16 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     val hourly = hourlyTotals(periodSessions, periodSales)
     val maxHourly = hourly.max()
     val peakHour = hourly.indexOf(maxHourly)
+    // Pengeluaran periode ini + laba bersih (fitur #13 Catat
+    // Pengeluaran): pengeluaran dihitung pada tanggal catatannya.
+    val periodExpenses = expenses
+        .filter { it.epoch >= from }
+        .sortedByDescending { it.epoch }
+    val expenseTotal = periodExpenses.sumOf { it.amount }
+    val prevExpenseTotal = if (period == 3) 0L else expenses
+        .filter { it.epoch in prevFrom until from }
+        .sumOf { it.amount }
+    val netTotal = grandTotal - expenseTotal
 
     Column(modifier = Modifier.fillMaxSize()) {
         SingleChoiceSegmentedButtonRow(
@@ -1626,6 +1663,28 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                             upColor = upGreen
                         )
                     }
+                }
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 12.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                        .copy(alpha = 0.25f)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Laba bersih",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        formatRupiah(netTotal),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
             }
         }
@@ -1711,6 +1770,44 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             }
         }
 
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 10.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("Pengeluaran", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    formatRupiah(expenseTotal),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                Text(
+                    periodExpenses.size.toString() + " catatan",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                if (period != 3) {
+                    Box(modifier = Modifier.padding(top = 6.dp)) {
+                        DeltaLine(
+                            current = expenseTotal,
+                            prevValue = prevExpenseTotal,
+                            prevLabel = prevLabel,
+                            upColor = MaterialTheme.colorScheme.error,
+                            downColor = upGreen,
+                            flatColor = MaterialTheme
+                                .colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+        }
         OutlinedButton(
             onClick = {
                 val label = listOf("Hari Ini", "Minggu Ini", "Bulan Ini", "Semua")[period]
@@ -1725,7 +1822,9 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                         sessionTotal = sessionTotal,
                         salesTotal = salesTotal,
                         sessions = periodSessions,
-                        sales = periodSales
+                        sales = periodSales,
+                        expenseTotal = expenseTotal,
+                        expenses = periodExpenses
                     ),
                     mimeType = "text/csv",
                     chooserTitle = "Bagikan Laporan"
@@ -1928,6 +2027,76 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             }
             item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Pengeluaran",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = {
+                        expenseEditing = null
+                        showExpenseForm = true
+                    }) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            "Catat",
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
+            }
+            if (periodExpenses.isEmpty()) {
+                item {
+                    Text(
+                        "Belum ada pengeluaran pada periode ini.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            items(periodExpenses, key = { it.id }) { expense ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            expenseEditing = expense
+                            showExpenseForm = true
+                        }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            expense.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            formatDateTime(expense.epoch),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme
+                                .colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        formatRupiah(expense.amount),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            item {
                 Text(
                     "Riwayat Sesi",
                     style = MaterialTheme.typography.titleSmall,
@@ -1988,6 +2157,208 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     }
     receiptSession?.let { s ->
         ReceiptDialog(dao = dao, session = s, onDismiss = { receiptSession = null })
+    }
+    if (showExpenseForm) {
+        ExpenseFormDialog(
+            initial = expenseEditing,
+            dao = dao,
+            onDismiss = { showExpenseForm = false }
+        )
+    }
+}
+
+// Form catat/edit pengeluaran (fitur #13): nama, nominal yang
+// terformat ribuan saat diketik, dan tanggal lewat pemilih tanggal M3
+// (jamnya mengikuti jam saat menyimpan, supaya urutan catatan wajar).
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExpenseFormDialog(
+    initial: ExpenseEntity?,
+    dao: KasirDao,
+    onDismiss: () -> Unit
+) {
+    var nameText by remember { mutableStateOf(initial?.name ?: "") }
+    var amountText by remember {
+        mutableStateOf(initial?.amount?.toString() ?: "")
+    }
+    var dateMillis by remember {
+        mutableStateOf(
+            (initial?.let {
+                Instant.ofEpochMilli(it.epoch)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+            } ?: LocalDate.now())
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+        )
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val amount = amountText.toLongOrNull() ?: 0L
+    val canSave = nameText.isNotBlank() && amount > 0
+    val pickedDate = Instant.ofEpochMilli(dateMillis)
+        .atZone(ZoneOffset.UTC)
+        .toLocalDate()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                if (initial == null) {
+                    "Catat Pengeluaran"
+                } else {
+                    "Edit Pengeluaran"
+                }
+            )
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = nameText,
+                    onValueChange = { nameText = it },
+                    label = { Text("Nama pengeluaran") },
+                    placeholder = { Text("mis. Restok makanan, listrik") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = groupThousands(amountText),
+                    onValueChange = { input ->
+                        amountText = input.filter { it.isDigit() }
+                    },
+                    label = { Text("Nominal (Rp)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                )
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) {
+                    Text(
+                        "Tanggal: " + pickedDate.format(
+                            DateTimeFormatter.ofPattern(
+                                "dd MMM yyyy",
+                                Locale("id", "ID")
+                            )
+                        )
+                    )
+                }
+                if (initial != null) {
+                    TextButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 4.dp)
+                    ) {
+                        Text(
+                            "Hapus",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = canSave,
+                onClick = {
+                    val epoch = pickedDate
+                        .atTime(LocalTime.now())
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli()
+                    scope.launch {
+                        if (initial == null) {
+                            dao.insertExpense(
+                                ExpenseEntity(
+                                    name = nameText.trim(),
+                                    amount = amount,
+                                    epoch = epoch
+                                )
+                            )
+                        } else {
+                            dao.updateExpense(
+                                initial.copy(
+                                    name = nameText.trim(),
+                                    amount = amount,
+                                    epoch = epoch
+                                )
+                            )
+                        }
+                        onDismiss()
+                    }
+                }
+            ) { Text("Simpan") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Batal") }
+        }
+    )
+    if (showDatePicker) {
+        val dateState = rememberDatePickerState(
+            initialSelectedDateMillis = dateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        dateState.selectedDateMillis?.let {
+                            dateMillis = it
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Batal")
+                }
+            }
+        ) {
+            DatePicker(state = dateState, showModeToggle = false)
+        }
+    }
+    if (showDeleteConfirm && initial != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Hapus Pengeluaran?") },
+            text = {
+                Text(
+                    "Catatan pengeluaran ini sebesar " +
+                        formatRupiah(initial.amount) + " akan dihapus."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            dao.deleteExpense(initial)
+                            showDeleteConfirm = false
+                            onDismiss()
+                        }
+                    }
+                ) {
+                    Text(
+                        "Ya, Hapus",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 

@@ -92,3 +92,15 @@ data class ReservationEntity(
     val durationMinutes: Int,
     val price: Long = 0
 )
+
+// Pengeluaran operasional (fitur Catat Pengeluaran): biaya seperti
+// restok makanan, listrik, atau sewa - dicatat agar Laporan bisa
+// menampilkan laba bersih, bukan hanya pendapatan.
+@Immutable
+@Entity(tableName = "expenses")
+data class ExpenseEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val amount: Long,
+    val epoch: Long
+)

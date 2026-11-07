@@ -19,7 +19,7 @@ import org.json.JSONObject
 // dibagikan ke mana saja (WhatsApp, Drive, ...), dan dipulihkan lagi dari
 // berkas yang sama. Formatnya sengaja polos:
 // { app, version, exportedAtMillis, units[], snacks[], sessions[],
-//   sessionSnacks[], snackSales[], reservations[] }
+//   sessionSnacks[], snackSales[], reservations[], expenses[] }
 data class BackupData(
     val exportedAtMillis: Long,
     val units: List<UnitEntity>,
@@ -27,7 +27,8 @@ data class BackupData(
     val sessions: List<SessionEntity>,
     val sessionSnacks: List<SessionSnackEntity>,
     val snackSales: List<SnackSaleEntity>,
-    val reservations: List<ReservationEntity> = emptyList()
+    val reservations: List<ReservationEntity> = emptyList(),
+    val expenses: List<ExpenseEntity> = emptyList()
 )
 
 suspend fun collectBackup(dao: KasirDao, exportedAtMillis: Long): BackupData =
@@ -38,7 +39,8 @@ suspend fun collectBackup(dao: KasirDao, exportedAtMillis: Long): BackupData =
         sessions = dao.allSessionsOnce(),
         sessionSnacks = dao.allSessionSnacksOnce(),
         snackSales = dao.allSnackSalesOnce(),
-        reservations = dao.allReservationsOnce()
+        reservations = dao.allReservationsOnce(),
+        expenses = dao.allExpensesOnce()
     )
 
 fun backupFileName(exportedAtMillis: Long): String =
@@ -54,6 +56,7 @@ suspend fun applyBackup(db: AppDatabase, data: BackupData) {
         dao.clearSessionSnacks()
         dao.clearSnackSales()
         dao.clearReservations()
+        dao.clearExpenses()
         dao.clearSessions()
         dao.clearSnacks()
         dao.clearUnits()
@@ -63,6 +66,7 @@ suspend fun applyBackup(db: AppDatabase, data: BackupData) {
         data.sessionSnacks.forEach { dao.insertSessionSnack(it) }
         data.snackSales.forEach { dao.insertSnackSale(it) }
         data.reservations.forEach { dao.insertReservation(it) }
+        data.expenses.forEach { dao.insertExpense(it) }
     }
 }
 
@@ -139,6 +143,16 @@ fun backupToJson(data: BackupData): String {
                 put("total", s.total)
                 put("epoch", s.epoch)
                 put("paymentMethod", s.paymentMethod)
+            })
+        }
+    })
+    root.put("expenses", JSONArray().apply {
+        data.expenses.forEach { e ->
+            put(JSONObject().apply {
+                put("id", e.id)
+                put("name", e.name)
+                put("amount", e.amount)
+                put("epoch", e.epoch)
             })
         }
     })
@@ -229,6 +243,15 @@ fun parseBackup(text: String): BackupData {
                 paymentMethod = o.getString("paymentMethod")
             )
         },
+        // Backup lama belum punya pengeluaran: anggap kosong juga.
+        expenses = root.optJSONArray("expenses")?.mapItems { o ->
+            ExpenseEntity(
+                id = o.getLong("id"),
+                name = o.getString("name"),
+                amount = o.getLong("amount"),
+                epoch = o.getLong("epoch")
+            )
+        } ?: emptyList(),
         // Backup lama belum punya reservasi: anggap kosong, jangan gagal.
         reservations = root.optJSONArray("reservations")?.mapItems { o ->
             ReservationEntity(
