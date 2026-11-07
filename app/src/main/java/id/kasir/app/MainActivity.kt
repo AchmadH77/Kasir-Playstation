@@ -521,9 +521,8 @@ private fun StartSessionDialog(
     onDismiss: () -> Unit,
     onStarted: () -> Unit
 ) {
+    var paket by remember { mutableIntStateOf(120) }
     var durationText by remember { mutableStateOf("2") }
-    val durationHours = durationText.toIntOrNull() ?: 0
-    val paket = durationHours * 60
     var priceText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val price = priceText.toLongOrNull() ?: 0L
@@ -557,7 +556,14 @@ private fun StartSessionDialog(
                             rowOptions.forEach { m ->
                                 val selected = paket == m
                                 Card(
-                                    onClick = { durationText = (m / 60).toString() },
+                                    onClick = {
+                                        paket = m
+                                        durationText = if (m % 60 == 0) {
+                                            (m / 60).toString()
+                                        } else {
+                                            ""
+                                        }
+                                    },
                                     colors = CardDefaults.cardColors(
                                         containerColor = if (selected) {
                                             MaterialTheme.colorScheme.primaryContainer
@@ -609,10 +615,20 @@ private fun StartSessionDialog(
                 OutlinedTextField(
                     value = durationText,
                     onValueChange = { v ->
-                        durationText = v.filter { c -> c.isDigit() }.take(2)
+                        val cleaned = v.filter { c -> c.isDigit() }.take(2)
+                        durationText = cleaned
+                        cleaned.toIntOrNull()?.let { paket = it * 60 }
                     },
                     label = { Text("Durasi (jam)") },
-                    placeholder = { Text("mis. 2") },
+                    placeholder = {
+                        Text(
+                            if (paket % 60 != 0) {
+                                formatMinutes(paket)
+                            } else {
+                                "mis. 2"
+                            }
+                        )
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
@@ -642,7 +658,7 @@ private fun StartSessionDialog(
         },
         confirmButton = {
             Button(
-                enabled = price > 0 && durationHours >= 1,
+                enabled = price > 0 && paket > 0,
                 onClick = {
                     scope.launch {
                         dao.insertSession(

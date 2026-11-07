@@ -21,7 +21,7 @@ const val PAY_QRIS = "QRIS"
 const val BLOCK_MINUTES = 10
 
 val CONSOLE_TYPES = listOf("PS3", "PS4", "PS5")
-val PAKET_OPTIONS = listOf(60, 120, 180, 240, 300)
+val PAKET_OPTIONS = listOf(30, 60, 120, 180, 240, 300)
 
 // Tarif per jam mengikuti jenis konsol; formulir unit tidak lagi meminta
 // tarif sendiri (varian U2, dipilih 2026-11-05).
