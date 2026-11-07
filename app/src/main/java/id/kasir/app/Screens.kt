@@ -625,7 +625,6 @@ fun laporanCsv(
     grandTotal: Long,
     sessionTotal: Long,
     salesTotal: Long,
-    byUnit: List<Pair<Triple<String, Int, Int>, Long>>,
     sessions: List<SessionEntity>,
     sales: List<SnackSaleEntity>
 ): String {
@@ -636,16 +635,8 @@ fun laporanCsv(
     sb.appendLine()
     sb.appendLine("RINGKASAN")
     sb.appendLine("Total Pendapatan;" + grandTotal)
-    sb.appendLine("Sewa & Sesi;" + sessionTotal)
+    sb.appendLine("Playstation;" + sessionTotal)
     sb.appendLine("Makanan Langsung;" + salesTotal)
-    sb.appendLine()
-    sb.appendLine("PER UNIT")
-    sb.appendLine("Unit;Sesi;Durasi (menit);Pendapatan")
-    byUnit.forEach { (info, revenue) ->
-        sb.appendLine(
-            csvCell(info.first) + ";" + info.second + ";" + info.third + ";" + revenue
-        )
-    }
     sb.appendLine()
     sb.appendLine("RIWAYAT SESI")
     sb.appendLine("Tanggal Selesai;Unit;Konsol;Mode;Durasi (menit);Sewa;Makanan di Sesi;Total;Metode")
@@ -1426,16 +1417,6 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     val sessionTotal = periodSessions.sumOf { it.total }
     val salesTotal = periodSales.sumOf { it.total }
     val grandTotal = sessionTotal + salesTotal
-    val byUnit = periodSessions.groupBy { it.unitName }
-        .map { (name, list) ->
-            Triple(
-                name,
-                list.size,
-                list.sumOf { elapsedMinutes(it, it.endEpoch ?: nowMs) }
-            ) to list.sumOf { it.total }
-        }
-        .sortedByDescending { it.first.second }
-
     // Grafik 7 hari terakhir (selalu 7 hari, tidak mengikuti pilihan periode):
     // total sesi selesai + penjualan jajan langsung per hari.
     val dayNames = listOf("Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab")
@@ -1471,7 +1452,7 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             }
         }
-        // L5 - Kartu Berdampingan: sewa (hijau) dan jajan (oranye) jadi dua
+        // L5 - Kartu Berdampingan: Playstation dan jajan (oranye) jadi dua
         // kartu besar; total pendapatan jadi baris ringkasan di bawahnya.
         Row(
             modifier = Modifier
@@ -1487,7 +1468,7 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                 )
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text("Sewa & sesi", style = MaterialTheme.typography.labelLarge)
+                    Text("Playstation", style = MaterialTheme.typography.labelLarge)
                     Text(
                         formatRupiah(sessionTotal),
                         style = MaterialTheme.typography.titleLarge,
@@ -1566,7 +1547,6 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                         grandTotal = grandTotal,
                         sessionTotal = sessionTotal,
                         salesTotal = salesTotal,
-                        byUnit = byUnit,
                         sessions = periodSessions,
                         sales = periodSales
                     ),
@@ -1665,7 +1645,7 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             }
             item {
                 CompositionRow(
-                    label = "Sewa & sesi",
+                    label = "Playstation",
                     value = sessionTotal,
                     grandTotal = grandTotal,
                     color = MaterialTheme.colorScheme.primary
@@ -1678,28 +1658,6 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                     grandTotal = grandTotal,
                     color = Color(0xFFE8833A)
                 )
-            }
-            if (byUnit.isNotEmpty()) {
-                item {
-                    Text(
-                        "Unit Terlaris",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-                items(byUnit) { (info, revenue) ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            info.first + " - " + info.second + " sesi - " + formatMinutes(info.third),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(formatRupiah(revenue), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
             }
             item {
                 Text(

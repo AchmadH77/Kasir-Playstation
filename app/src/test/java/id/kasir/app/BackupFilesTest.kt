@@ -75,7 +75,7 @@ class BackupFilesTest {
     }
 
     @Test
-    fun laporanCsvContainsTotalsUnitsAndRows() {
+    fun laporanCsvContainsTotalsAndRows() {
         val csv = laporanCsv(
             storeName = "Rental PS",
             periodLabel = "Hari Ini",
@@ -83,16 +83,15 @@ class BackupFilesTest {
             grandTotal = 27000,
             sessionTotal = 17000,
             salesTotal = 10000,
-            byUnit = listOf(Triple("TV 01", 1, 120) to 17000L),
             sessions = sampleData.sessions.filter { it.status == "FINISHED" },
             sales = sampleData.snackSales
         )
         assertTrue(csv.contains("Laporan Kasir - Hari Ini"))
         assertTrue(csv.contains("Total Pendapatan;27000"))
-        assertTrue(csv.contains("Sewa & Sesi;17000"))
+        assertTrue(csv.contains("Playstation;17000"))
         assertTrue(csv.contains("Makanan Langsung;10000"))
-        assertTrue(csv.contains("TV 01;1;120;17000"))
         assertTrue(csv.contains("Paket 2 jam;120;12000;5000;17000;QRIS"))
         assertTrue(csv.contains("Kopi Hitam;2;5000;10000;TUNAI"))
     }
 }
+
