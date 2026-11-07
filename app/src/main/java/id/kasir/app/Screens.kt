@@ -1535,7 +1535,8 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
         .sumOf { it.total }
     val prevGrandTotal = prevSessionTotal + prevSalesTotal
     // Hijau "naik" yang terbaca di tema terang maupun gelap.
-    val upGreen = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) {
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val upGreen = if (darkTheme) {
         Color(0xFF4ADE80)
     } else {
         Color(0xFF1E7B34)
@@ -1651,8 +1652,19 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
             Card(
                 modifier = Modifier.weight(1f),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF4A2C14),
-                    contentColor = Color(0xFFFFD9B0)
+                    // Cokelat gelap hanya di tema gelap; di tema terang
+                    // pakai wadah amber terang dari tema agar menyatu
+                    // dengan latar terang - permintaan Achmad.
+                    containerColor = if (darkTheme) {
+                        Color(0xFF4A2C14)
+                    } else {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    },
+                    contentColor = if (darkTheme) {
+                        Color(0xFFFFD9B0)
+                    } else {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    }
                 )
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -1674,9 +1686,18 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                                 current = salesTotal,
                                 prevValue = prevSalesTotal,
                                 prevLabel = prevLabel,
-                                upColor = Color(0xFF4ADE80),
-                                downColor = Color(0xFFFF9D97),
-                                flatColor = Color(0xFFFFD9B0)
+                                upColor = upGreen,
+                                downColor = if (darkTheme) {
+                                    Color(0xFFFF9D97)
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                                flatColor = if (darkTheme) {
+                                    Color(0xFFFFD9B0)
+                                } else {
+                                    MaterialTheme.colorScheme
+                                        .onTertiaryContainer
+                                }
                             )
                         }
                     }

@@ -67,6 +67,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -878,7 +879,16 @@ private fun UnitRow(
                 )
             }
             if (session == null) {
-                OutlinedButton(onClick = onClick) { Text("Mulai") }
+                // Warna tombol Mulai disamakan dengan pita header
+                // (navy #16324F, teks putih) agar tegas di tema
+                // terang maupun gelap - permintaan Achmad.
+                Button(
+                    onClick = onClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF16324F),
+                        contentColor = Color.White
+                    )
+                ) { Text("Mulai") }
             } else {
                 Column(horizontalAlignment = Alignment.End) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
