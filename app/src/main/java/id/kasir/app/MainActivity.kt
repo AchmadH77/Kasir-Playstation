@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -71,7 +72,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -166,9 +166,53 @@ private fun KasirApp() {
             } else {
             Scaffold(
                 topBar = {
-                    TopAppBar(
-                        title = { Text(tabTitles[tab], fontWeight = FontWeight.ExtraBold) }
+                    // H2: header berupa pita hijau tua dengan ikon layar
+                    // di lingkaran putih, seragam di keempat tab.
+                    val tabIcons = listOf(
+                        Icons.Default.SportsEsports,
+                        Icons.Default.Fastfood,
+                        Icons.Default.Assessment,
+                        Icons.Default.MoreHoriz
                     )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF123D26),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = 12.dp
+                            ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .background(Color.White, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    tabIcons[tab],
+                                    contentDescription = null,
+                                    tint = Color(0xFF123D26),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Text(
+                                tabTitles[tab],
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(start = 12.dp)
+                            )
+                        }
+                    }
                 },
                 snackbarHost = { SnackbarHost(snackbar, modifier = Modifier.padding(bottom = 112.dp)) }
             ) { padding ->
