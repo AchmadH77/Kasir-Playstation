@@ -381,7 +381,7 @@ private data class SnackSaleSnapshot(
     val epoch: Long
 )
 
-fun snackReceiptText(
+private fun snackReceiptText(
     storeName: String,
     snapshot: SnackSaleSnapshot
 ): String {
