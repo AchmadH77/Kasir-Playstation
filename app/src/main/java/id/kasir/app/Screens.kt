@@ -1583,18 +1583,54 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
     val netTotal = grandTotal - expenseTotal
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SingleChoiceSegmentedButtonRow(
+        // PS2: pemilih periode menjadi kapsul pill melayang seperti
+        // dock NB1 - pill navy untuk periode aktif, label redup untuk
+        // yang tidak aktif (menggantikan segmented button bawaan).
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
-            listOf("Hari Ini", "Minggu Ini", "Bulan Ini", "Semua").forEachIndexed { index, label ->
-                SegmentedButton(
-                    selected = period == index,
-                    onClick = { period = index },
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = 4),
-                    label = { Text(label) }
-                )
+            Row(modifier = Modifier.padding(4.dp)) {
+                val periodLabels =
+                    listOf("Hari Ini", "Minggu Ini", "Bulan Ini", "Semua")
+                val periodWeights = listOf(1.0f, 1.15f, 1.05f, 0.8f)
+                periodLabels.forEachIndexed { index, label ->
+                    val selected = period == index
+                    Box(
+                        modifier = Modifier
+                            .weight(periodWeights[index])
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (selected) {
+                                    Color(0xFF16324F)
+                                } else {
+                                    Color.Transparent
+                                }
+                            )
+                            .clickable { period = index }
+                            .padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) {
+                                FontWeight.Bold
+                            } else {
+                                FontWeight.Medium
+                            },
+                            color = if (selected) {
+                                Color.White
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
         // K2 (LE3 + LF1): seluruh hitungan masuk satu kartu hero -

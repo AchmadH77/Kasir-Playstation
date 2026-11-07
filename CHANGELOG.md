@@ -9,6 +9,9 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Reports period selector PS2: the stock Material segmented row is
+  replaced by a floating capsule in the NB1 dock's language — a navy
+  pill marks the active period, inactive labels stay dim.
 - Reports expenses PE6: the expense list becomes one compact card
   (name + date rows, error-red amounts, dividers), the section title
   now carries the period total, and the Catat button is a filled navy
