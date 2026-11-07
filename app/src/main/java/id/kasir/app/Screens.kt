@@ -55,6 +55,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -701,27 +702,18 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
     val totalQty = selected.sumOf { minOf(quantities[it.id] ?: 0, it.stock) }
     val totalPrice = selected.sumOf { it.price * minOf(quantities[it.id] ?: 0, it.stock) }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
+        // MK2: judul berdiri sendiri; tombol Tambah menjadi FAB
+        // di kanan bawah (permintaan Achmad).
+        Text(
+            "Menu makanan & stok",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Menu makanan & stok",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
-            )
-            Button(onClick = {
-                editing = null
-                showForm = true
-            }) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Text("Tambah", modifier = Modifier.padding(start = 6.dp))
-            }
-        }
+                .padding(16.dp)
+        )
         // Peringatan stok menipis: muncul hanya bila ada menu kritis.
         val lowSnacks = lowStockSnacks(snacks)
         var showLowDialog by remember { mutableStateOf(false) }
@@ -831,7 +823,7 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
         }
         if (snacks.isEmpty()) {
             Text(
-                "Menu masih kosong. Tambahkan makanan pertama lewat tombol Tambah.",
+                "Menu masih kosong. Tambahkan makanan pertama lewat tombol Tambah di kanan bawah.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -839,47 +831,45 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(snacks, key = { it.id }) { snack ->
                 val qty = minOf(quantities[snack.id] ?: 0, snack.stock)
                 val habis = snack.stock == 0
-                Card(
-                    onClick = {
-                        editing = snack
-                        showForm = true
-                    },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                // MK2 Daftar Ramping: tanpa kartu; baris dipisah
+                // garis tipis, petak inisial monokrom biru tema.
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                editing = snack
+                                showForm = true
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(40.dp)
                                 .background(
                                     if (habis) {
                                         MaterialTheme.colorScheme.surfaceContainerHighest
                                     } else {
-                                        snackTileColor(snack.name)
+                                        MaterialTheme.colorScheme.primaryContainer
                                     },
-                                    RoundedCornerShape(14.dp)
+                                    RoundedCornerShape(10.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 snack.name.take(1).uppercase(),
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (habis) {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 } else {
-                                    Color.White
+                                    MaterialTheme.colorScheme.primary
                                 }
                             )
                         }
@@ -905,7 +895,8 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
                         }
                         IconButton(
                             enabled = qty > 0,
-                            onClick = { setQty(snack, qty - 1) }
+                            onClick = { setQty(snack, qty - 1) },
+                            modifier = Modifier.size(36.dp)
                         ) { Icon(Icons.Default.Remove, contentDescription = null) }
                         Box(
                             modifier = Modifier.width(28.dp),
@@ -918,9 +909,14 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
                         }
                         IconButton(
                             enabled = qty < snack.stock,
-                            onClick = { setQty(snack, qty + 1) }
+                            onClick = { setQty(snack, qty + 1) },
+                            modifier = Modifier.size(36.dp)
                         ) { Icon(Icons.Default.Add, contentDescription = null) }
                     }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    )
                 }
             }
         }
@@ -953,6 +949,23 @@ fun JajanTab(dao: KasirDao, notify: (String) -> Unit) {
                 }
             }
         }
+    }
+    // MK2 (permintaan Achmad): tombol + hanya di kanan bawah,
+    // sebagai FAB; naik ke atas kartu ringkasan jual bila muncul.
+    ExtendedFloatingActionButton(
+        onClick = {
+            editing = null
+            showForm = true
+        },
+        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+        text = { Text("Tambah") },
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(
+                end = 16.dp,
+                bottom = if (totalQty > 0) 100.dp else 16.dp
+            )
+    )
     }
     if (showForm) {
         SnackFormDialog(
@@ -1020,8 +1033,8 @@ private fun BatchSellDialog(
         title = { Text("Jual Makanan") },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                // B2: baris item memakai petak inisial berwarna yang sama
-                // dengan daftar jajan (warna stabil dari nama menu).
+                // B2: baris item memakai petak inisial berwarna
+                // (warna stabil dari nama menu).
                 liveItems.forEach { (snack, qty) ->
                     Row(
                         modifier = Modifier
