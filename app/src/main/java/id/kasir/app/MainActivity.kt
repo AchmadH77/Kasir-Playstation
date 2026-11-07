@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -424,8 +425,9 @@ private fun KasirApp(
 }
 
 // Dock melayang menggantikan NavigationBar: kapsul surfaceContainerHigh
-// dengan bayangan; semua tab ikon + label kecil di bawahnya, dan ikon tab
-// aktif berlingkar primary (varian V6 - Ikon + Label Bawah).
+// dengan bayangan (NB1 - Pill Ramping). Hanya tab aktif yang menampilkan
+// label, di dalam pil terisi primary yang melebar mengikuti isinya;
+// tab lain ikon saja. Lebar kapsul mengikuti isi, bukan layar penuh.
 @Composable
 private fun FloatingDock(
     selected: Int,
@@ -453,13 +455,16 @@ private fun FloatingDock(
         ) {
             items.forEachIndexed { index, (icon, label) ->
                 val isSelected = index == selected
-                // DB6: ikon + label bersebelahan; tab aktif di dalam
-                // pil terisi primary, tab lain polos.
+                // NB1: tab aktif = pil primary berisi ikon + label;
+                // tab lain ikon saja. animateContentSize membuat pil
+                // melebar/menciut halus saat berpindah tab, dan lebar
+                // pil mengikuti teksnya (label terpanjang "Makanan" /
+                // "Laporan" tetap tampil utuh, tidak terpotong).
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
-                        .weight(1f)
+                        .animateContentSize()
                         .padding(horizontal = 2.dp)
                         .then(
                             if (isSelected) {
@@ -473,7 +478,10 @@ private fun FloatingDock(
                             }
                         )
                         .clickable { onSelect(index) }
-                        .padding(horizontal = 8.dp, vertical = 10.dp)
+                        .padding(
+                            horizontal = if (isSelected) 16.dp else 12.dp,
+                            vertical = 10.dp
+                        )
                 ) {
                     Box {
                         Icon(
@@ -515,21 +523,15 @@ private fun FloatingDock(
                             }
                         }
                     }
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isSelected) {
-                            FontWeight.Bold
-                        } else {
-                            FontWeight.Medium
-                        },
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.padding(start = 6.dp)
-                    )
+                    if (isSelected) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+                    }
                 }
             }
         }

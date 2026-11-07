@@ -87,7 +87,7 @@ Prices are always stored as snapshots on the transaction rows, so changing a men
 ## Theme & design
 
 - The **W2 "Biru Baja"** steel-blue schemes, hand-written in `Theme.kt` (light: primary `#2E5A88`, container `#D3E3F3`; dark: primary `#6FA8DC`, container `#1B3A5C`) with every surface-container role specified explicitly, and a warm amber tertiary for paused/low-stock accents. Brand bands (header, start-session hero, receipt totals, About) use navy `#16324F` in both modes. The Reports food card keeps a warm dark orange as the complementary accent.
-- Navigation uses a **floating dock** (`FloatingDock`): a shadowed `surfaceContainerHigh` capsule in which every item is an icon + label side by side; the active tab sits inside a filled `primary` pill (DB6 layout). Tab content gets 120 dp of bottom padding so nothing hides behind the dock.
+- Navigation uses a **floating dock** (`FloatingDock`): a shadowed `surfaceContainerHigh` capsule whose width hugs its content (NB1 layout): only the active tab shows its label, inside a filled `primary` pill that widens to fit the text (animated with `animateContentSize`); the other tabs are icon-only. Tab content gets 120 dp of bottom padding so nothing hides behind the dock.
 - Unit rows are monochrome (one surface tone for every state); a running session shows a small status dot (pulsing in the last 5 minutes) and a monospace timer.
 - UI language: Indonesian.
 
