@@ -81,10 +81,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import id.kasir.app.data.DatabaseProvider
@@ -582,7 +584,7 @@ private fun SessionDetailDialog(
     var showAddSnack by remember { mutableStateOf(false) }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmVoid by remember { mutableStateOf(false) }
-    var showAddTime by remember { mutableStateOf(false) }
+    var tab by remember { mutableIntStateOf(0) }
     var addMinutes by remember { mutableIntStateOf(60) }
     var addPriceText by remember { mutableStateOf("") }
     val addPrice = addPriceText.toLongOrNull() ?: 0L
@@ -626,7 +628,10 @@ private fun SessionDetailDialog(
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(top = 12.dp)
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
                 )
                 Text(
                     when {
@@ -636,221 +641,259 @@ private fun SessionDetailDialog(
                         else -> "Open billing - mulai " + formatTime(session.startEpoch)
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Row(
+                // S6: the dialog content is split into three segmented
+                // tabs - Sesi (billing), Makanan (session snacks), and
+                // Waktu (pause plus add-time). Stop & Bayar stays below.
+                SingleChoiceSegmentedButtonRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(top = 16.dp)
                 ) {
-                    Text("Sewa berjalan", style = MaterialTheme.typography.bodyMedium)
-                    Text(formatRupiah(rental), style = MaterialTheme.typography.bodyMedium)
+                    listOf("Sesi", "Makanan", "Waktu").forEachIndexed { index, label ->
+                        SegmentedButton(
+                            selected = tab == index,
+                            onClick = { tab = index },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = 3),
+                            label = { Text(label) }
+                        )
+                    }
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Makanan", style = MaterialTheme.typography.bodyMedium)
-                    Text(formatRupiah(snackTotal), style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "Total sementara",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        formatRupiah(rental + snackTotal),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Text(
-                    "Makanan di sesi ini",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(top = 18.dp)
-                )
-                if (sessionSnacks.isEmpty()) {
-                    Text(
-                        "Belum ada makanan.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                sessionSnacks.forEach { item ->
-                    val stock = snacks.firstOrNull { it.id == item.snackId }?.stock ?: 0
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(item.snackName, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                formatRupiah(item.price) + " x " + item.qty + " = " +
-                                    formatRupiah(item.price * item.qty),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                when (tab) {
+                    0 -> {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Sewa berjalan", style = MaterialTheme.typography.bodyMedium)
+                            Text(formatRupiah(rental), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Makanan", style = MaterialTheme.typography.bodyMedium)
+                            Text(formatRupiah(snackTotal), style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF123D26),
+                                contentColor = Color.White
                             )
-                        }
-                        IconButton(onClick = {
-                            scope.launch {
-                                if (item.qty <= 1) {
-                                    dao.deleteSessionSnack(item)
-                                } else {
-                                    dao.updateSessionSnack(item.copy(qty = item.qty - 1))
-                                }
-                                dao.increaseStock(item.snackId, 1)
-                            }
-                        }) {
-                            Icon(Icons.Default.Remove, contentDescription = null)
-                        }
-                        Text(item.qty.toString(), style = MaterialTheme.typography.titleMedium)
-                        IconButton(
-                            enabled = stock > 0,
-                            onClick = {
-                                scope.launch {
-                                    dao.updateSessionSnack(item.copy(qty = item.qty + 1))
-                                    dao.decreaseStock(item.snackId, 1)
-                                }
-                            }
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                        }
-                    }
-                }
-                FilledTonalButton(
-                    onClick = { showAddSnack = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                ) { Text("Tambah Makanan") }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (paused) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    val ps = session.pauseStartEpoch
-                                    val extra = if (ps != null) {
-                                        System.currentTimeMillis() - ps
-                                    } else {
-                                        0L
-                                    }
-                                    dao.updateSession(
-                                        session.copy(
-                                            status = STATUS_RUNNING,
-                                            pausedMillis = session.pausedMillis + extra,
-                                            pauseStartEpoch = null
-                                        )
-                                    )
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null)
-                            Text("Lanjut", modifier = Modifier.padding(start = 6.dp))
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = {
-                                scope.launch {
-                                    dao.updateSession(
-                                        session.copy(
-                                            status = STATUS_PAUSED,
-                                            pauseStartEpoch = System.currentTimeMillis()
-                                        )
-                                    )
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Pause, contentDescription = null)
-                            Text("Jeda", modifier = Modifier.padding(start = 6.dp))
-                        }
-                    }
-                    if (session.mode == MODE_PAKET) {
-                        FilledTonalButton(
-                            onClick = { showAddTime = !showAddTime },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Tambah Waktu") }
-                    }
-                }
-                if (showAddTime && session.mode == MODE_PAKET) {
-                    Column(modifier = Modifier.padding(top = 8.dp)) {
-                        // Template durasi + nominal manual: harga paket
-                        // bertambah sebesar yang diketik, tidak dihitung
-                        // dari tarif per jam.
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(30, 60, 120).forEach { add ->
-                                FilterChip(
-                                    selected = addMinutes == add,
-                                    onClick = { addMinutes = add },
-                                    label = { Text("+" + formatMinutes(add)) }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Total sementara",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    formatRupiah(rental + snackTotal),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
-                        OutlinedTextField(
-                            value = addPriceText,
-                            onValueChange = { v ->
-                                addPriceText = v.filter { c -> c.isDigit() }
-                            },
-                            label = { Text("Harga tambahan (Rp)") },
-                            placeholder = { Text("Tulis nominalnya") },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number
-                            ),
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
+                    }
+                    1 -> {
+                        Text(
+                            "Makanan di sesi ini",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(top = 16.dp)
                         )
-                        Button(
-                            enabled = addPrice > 0,
-                            onClick = {
-                                scope.launch {
-                                    // Sesi lama tanpa harga manual: kunci
-                                    // dulu biaya berjalannya sebagai dasar.
-                                    val base = if (session.paketPrice > 0) {
-                                        session.paketPrice
-                                    } else {
-                                        rentalCost(session, now)
-                                    }
-                                    dao.updateSession(
-                                        session.copy(
-                                            paketMinutes = session.paketMinutes + addMinutes,
-                                            paketPrice = base + addPrice
-                                        )
-                                    )
-                                    notify(
-                                        "Waktu ditambah " + formatMinutes(addMinutes) +
-                                            " - harga paket sekarang " +
-                                            formatRupiah(base + addPrice)
+                        if (sessionSnacks.isEmpty()) {
+                            Text(
+                                "Belum ada makanan.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                        sessionSnacks.forEach { item ->
+                            val stock = snacks.firstOrNull { it.id == item.snackId }?.stock ?: 0
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.snackName, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        formatRupiah(item.price) + " x " + item.qty + " = " +
+                                            formatRupiah(item.price * item.qty),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                showAddTime = false
-                                addPriceText = ""
-                            },
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        if (item.qty <= 1) {
+                                            dao.deleteSessionSnack(item)
+                                        } else {
+                                            dao.updateSessionSnack(item.copy(qty = item.qty - 1))
+                                        }
+                                        dao.increaseStock(item.snackId, 1)
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Remove, contentDescription = null)
+                                }
+                                Text(item.qty.toString(), style = MaterialTheme.typography.titleMedium)
+                                IconButton(
+                                    enabled = stock > 0,
+                                    onClick = {
+                                        scope.launch {
+                                            dao.updateSessionSnack(item.copy(qty = item.qty + 1))
+                                            dao.decreaseStock(item.snackId, 1)
+                                        }
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                }
+                            }
+                        }
+                        FilledTonalButton(
+                            onClick = { showAddSnack = true },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        ) { Text("Tambah") }
+                                .padding(top = 10.dp)
+                        ) { Text("Tambah Makanan") }
+                    }
+                    else -> {
+                        if (paused) {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val ps = session.pauseStartEpoch
+                                        val extra = if (ps != null) {
+                                            System.currentTimeMillis() - ps
+                                        } else {
+                                            0L
+                                        }
+                                        dao.updateSession(
+                                            session.copy(
+                                                status = STATUS_RUNNING,
+                                                pausedMillis = session.pausedMillis + extra,
+                                                pauseStartEpoch = null
+                                            )
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                Text("Lanjut", modifier = Modifier.padding(start = 6.dp))
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    scope.launch {
+                                        dao.updateSession(
+                                            session.copy(
+                                                status = STATUS_PAUSED,
+                                                pauseStartEpoch = System.currentTimeMillis()
+                                            )
+                                        )
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp)
+                            ) {
+                                Icon(Icons.Default.Pause, contentDescription = null)
+                                Text("Jeda", modifier = Modifier.padding(start = 6.dp))
+                            }
+                        }
+                        if (session.mode == MODE_PAKET) {
+                            Text(
+                                "Tambah Waktu",
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(top = 18.dp)
+                            )
+                            // Template durasi + nominal manual: harga paket
+                            // bertambah sebesar yang diketik, tidak dihitung
+                            // dari tarif per jam.
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                listOf(30, 60, 120).forEach { add ->
+                                    FilterChip(
+                                        selected = addMinutes == add,
+                                        onClick = { addMinutes = add },
+                                        label = { Text("+" + formatMinutes(add)) }
+                                    )
+                                }
+                            }
+                            OutlinedTextField(
+                                value = addPriceText,
+                                onValueChange = { v ->
+                                    addPriceText = v.filter { c -> c.isDigit() }
+                                },
+                                label = { Text("Harga tambahan (Rp)") },
+                                placeholder = { Text("Tulis nominalnya") },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Number
+                                ),
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            )
+                            Button(
+                                enabled = addPrice > 0,
+                                onClick = {
+                                    scope.launch {
+                                        // Sesi lama tanpa harga manual: kunci
+                                        // dulu biaya berjalannya sebagai dasar.
+                                        val base = if (session.paketPrice > 0) {
+                                            session.paketPrice
+                                        } else {
+                                            rentalCost(session, now)
+                                        }
+                                        dao.updateSession(
+                                            session.copy(
+                                                paketMinutes = session.paketMinutes + addMinutes,
+                                                paketPrice = base + addPrice
+                                            )
+                                        )
+                                        notify(
+                                            "Waktu ditambah " + formatMinutes(addMinutes) +
+                                                " - harga paket sekarang " +
+                                                formatRupiah(base + addPrice)
+                                        )
+                                    }
+                                    addPriceText = ""
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) { Text("Tambah") }
+                        } else {
+                            Text(
+                                "Sesi open billing tidak memakai paket waktu.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+                        }
                     }
                 }
                 Button(
