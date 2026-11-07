@@ -13,6 +13,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -40,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
@@ -520,7 +522,9 @@ private fun StartSessionDialog(
     onDismiss: () -> Unit,
     onStarted: () -> Unit
 ) {
-    var paket by remember { mutableIntStateOf(120) }
+    var durationText by remember { mutableStateOf("2") }
+    val durationHours = durationText.toIntOrNull() ?: 0
+    val paket = durationHours * 60
     var priceText by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val price = priceText.toLongOrNull() ?: 0L
@@ -539,22 +543,85 @@ private fun StartSessionDialog(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(top = 16.dp)
                 )
+                // M1: kartu durasi besar yang mudah diketuk. Memilih
+                // kartu mengisi kolom durasi di bawahnya; durasinya juga
+                // bisa diketik manual (mis. 8 jam) di kolom itu.
                 Column(
                     modifier = Modifier.padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     PAKET_OPTIONS.chunked(3).forEach { rowOptions ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             rowOptions.forEach { m ->
-                                FilterChip(
-                                    selected = paket == m,
-                                    onClick = { paket = m },
-                                    label = { Text(formatMinutes(m)) }
-                                )
+                                val selected = paket == m
+                                Card(
+                                    onClick = { durationText = (m / 60).toString() },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (selected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        }
+                                    ),
+                                    border = if (selected) {
+                                        BorderStroke(
+                                            2.dp,
+                                            MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        null
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            formatMinutes(m),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (selected) {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(4.dp)
+                                                    .size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            repeat(3 - rowOptions.size) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
                 }
+                OutlinedTextField(
+                    value = durationText,
+                    onValueChange = { v ->
+                        durationText = v.filter { c -> c.isDigit() }.take(2)
+                    },
+                    label = { Text("Durasi (jam)") },
+                    placeholder = { Text("mis. 2") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                )
                 OutlinedTextField(
                     value = groupThousands(priceText),
                     onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
@@ -576,7 +643,7 @@ private fun StartSessionDialog(
         },
         confirmButton = {
             Button(
-                enabled = price > 0,
+                enabled = price > 0 && durationHours >= 1,
                 onClick = {
                     scope.launch {
                         dao.insertSession(
