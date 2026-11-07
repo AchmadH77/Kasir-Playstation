@@ -106,6 +106,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -1569,42 +1570,110 @@ private fun SessionDetailDialog(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
-                // S6: the dialog content is split into three segmented
-                // tabs - Sesi (billing), Makanan (session snacks), and
-                // Waktu (pause plus add-time). Stop & Bayar stays below.
-                SingleChoiceSegmentedButtonRow(
+                // S6: the dialog content is split into three tabs -
+                // Sesi (billing), Makanan (session snacks), and Waktu
+                // (pause plus add-time). Stop & Bayar stays below.
+                // SD6: tab menjadi kapsul pill seperti pemilih periode
+                // PS2 - pill navy untuk tab aktif, label redup lainnya.
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp)
+                        .padding(top = 16.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
-                    listOf("Sesi", "Makanan", "Waktu").forEachIndexed { index, label ->
-                        SegmentedButton(
-                            selected = tab == index,
-                            onClick = { tab = index },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = 3),
-                            label = { Text(label) }
-                        )
+                    Row(modifier = Modifier.padding(4.dp)) {
+                        listOf("Sesi", "Makanan", "Waktu").forEachIndexed { index, label ->
+                            val selected = tab == index
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(
+                                        if (selected) {
+                                            Color(0xFF16324F)
+                                        } else {
+                                            Color.Transparent
+                                        }
+                                    )
+                                    .clickable { tab = index }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selected) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Medium
+                                    },
+                                    color = if (selected) {
+                                        Color.White
+                                    } else {
+                                        MaterialTheme.colorScheme
+                                            .onSurfaceVariant
+                                    },
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
                 }
                 when (tab) {
                     0 -> {
-                        Row(
+                        // SD6: rincian sesi masuk satu kartu mini.
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme
+                                    .colorScheme.surfaceContainerHigh
+                            )
                         ) {
-                            Text("Sewa berjalan", style = MaterialTheme.typography.bodyMedium)
-                            Text(formatRupiah(rental), style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("Makanan", style = MaterialTheme.typography.bodyMedium)
-                            Text(formatRupiah(snackTotal), style = MaterialTheme.typography.bodyMedium)
+                            Column(
+                                modifier = Modifier.padding(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement =
+                                        Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Sewa berjalan",
+                                        style = MaterialTheme
+                                            .typography.bodyMedium,
+                                        color = MaterialTheme
+                                            .colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        formatRupiah(rental),
+                                        style = MaterialTheme
+                                            .typography.bodyMedium
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 6.dp),
+                                    horizontalArrangement =
+                                        Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        "Makanan",
+                                        style = MaterialTheme
+                                            .typography.bodyMedium,
+                                        color = MaterialTheme
+                                            .colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        formatRupiah(snackTotal),
+                                        style = MaterialTheme
+                                            .typography.bodyMedium
+                                    )
+                                }
+                            }
                         }
                         Card(
                             modifier = Modifier
@@ -1903,6 +1972,10 @@ private fun SessionDetailDialog(
                 }
                 Button(
                     onClick = { showCheckout = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF16324F),
+                        contentColor = Color.White
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp)

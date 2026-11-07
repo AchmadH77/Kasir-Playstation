@@ -9,6 +9,9 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Session dialog SD6: the Sesi/Makanan/Waktu tabs become a PS2-style
+  pill capsule (navy active pill), the Sesi tab's billing rows move
+  into one mini card, and Stop & Bayar turns navy to match.
 - Reports period selector PS2: the stock Material segmented row is
   replaced by a floating capsule in the NB1 dock's language — a navy
   pill marks the active period, inactive labels stay dim.
