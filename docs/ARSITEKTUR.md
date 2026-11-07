@@ -58,7 +58,7 @@ Prices are always stored as snapshots on the transaction rows, so changing a men
 
 ## Payment & stock flow
 
-- Session checkout: total = rental total + session snacks total. Cash requires the tendered amount to be ≥ the total and shows the change; QRIS is always exact. After payment the session becomes FINISHED and a receipt is offered for sharing.
+- Session checkout: total = rental total + session snacks total. Cash requires the tendered amount to be ≥ the total and shows the change; QRIS is always exact. The payment dialog leads with a navy band showing the total and two large Tunai/QRIS cards. After payment the session becomes FINISHED and a receipt is offered for sharing.
 - Cancelling a session restores the stock of all of its snacks, then deletes the session and its snack rows.
 - Direct sales in the Snacks tab: the user raises steppers on several items (capped by stock), then pays for all of them in one dialog (Cash/QRIS) where **quantities remain editable** — lowering a quantity to zero removes the row. Each item becomes one `SnackSaleEntity`, its stock is decreased, and a snack receipt dialog closes the sale.
 - Snacks added to a session decrease stock immediately; lowering the quantity or cancelling the session returns it. Food is added from a catalog built into the session dialog's Makanan tab (no separate add dialog).
@@ -66,7 +66,7 @@ Prices are always stored as snapshots on the transaction rows, so changing a men
 
 ## Reservations
 
-- The Unit tab shows a Reservations card with today's upcoming bookings (max 3 + "+N more"). A reservation stores a snapshot of the unit name, the customer, the start time (date + time pickers), a package duration, and an optional price.
+- The Unit tab shows a Reservations card with today's upcoming bookings (max 3 + "+N more"). A reservation stores a snapshot of the unit name, the customer, the start time (date + time pickers), a package duration, and an optional price. The booking form is a full-screen page with a navy hero header and a bottom-pinned save button, not a dialog.
 - Starting a reservation opens the Start Session form prefilled with its duration and price; starting deletes the reservation. A reminder notification fires 15 minutes before the start (see Notifications).
 
 ## Notifications & alarms (`SessionAlarm.kt`)

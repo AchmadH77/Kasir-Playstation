@@ -71,6 +71,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -945,113 +946,160 @@ private fun ReservationDialog(
         pickedDate,
         LocalTime.of(hour, minute)
     ).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    AlertDialog(
+    // RV5: formulir reservasi jadi halaman penuh ber-hero navy,
+    // bukan dialog - sejajar dengan halaman Mulai Sesi (P2).
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Reservasi Unit") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    "Unit",
-                    style = MaterialTheme.typography.labelLarge
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 6.dp)
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF16324F),
+                        contentColor = Color.White
+                    )
                 ) {
-                    units.forEach { u ->
-                        FilterChip(
-                            selected = unit?.id == u.id,
-                            onClick = { unit = u },
-                            label = { Text(u.name) }
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nama pemesan") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { showDatePicker = true },
-                        modifier = Modifier.weight(1f)
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(formatDateTime(startEpoch).substringBefore(","))
-                    }
-                    OutlinedButton(
-                        onClick = { showTimePicker = true },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(formatTime(startEpoch))
-                    }
-                }
-                Text(
-                    "Durasi paket",
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(top = 14.dp)
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 6.dp)
-                ) {
-                    PAKET_OPTIONS.forEach { m ->
-                        FilterChip(
-                            selected = duration == m,
-                            onClick = { duration = m },
-                            label = { Text(formatMinutes(m)) }
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = groupThousands(priceText),
-                    onValueChange = { v ->
-                        priceText = v.filter { c -> c.isDigit() }
-                    },
-                    label = { Text("Harga paket (Rp, boleh kosong)") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
-                    ),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = unit != null && name.isNotBlank(),
-                onClick = {
-                    val u = unit
-                    if (u != null) {
-                        scope.launch {
-                            dao.insertReservation(
-                                ReservationEntity(
-                                    unitId = u.id,
-                                    unitName = u.name,
-                                    customerName = name.trim(),
-                                    startEpoch = startEpoch,
-                                    durationMinutes = duration,
-                                    price = priceText.toLongOrNull() ?: 0L
-                                )
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = Color.White
                             )
-                            onSaved()
+                        }
+                        Column(modifier = Modifier.padding(start = 2.dp)) {
+                            Text(
+                                "Reservasi Unit",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Pesan unit untuk nanti",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFA9C4DE)
+                            )
                         }
                     }
                 }
-            ) { Text("Simpan") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Batal") }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 16.dp)
+                ) {
+                    Text(
+                        "Unit",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 6.dp)
+                    ) {
+                        units.forEach { u ->
+                            FilterChip(
+                                selected = unit?.id == u.id,
+                                onClick = { unit = u },
+                                label = { Text(u.name) }
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Nama pemesan") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(formatDateTime(startEpoch).substringBefore(","))
+                        }
+                        OutlinedButton(
+                            onClick = { showTimePicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(formatTime(startEpoch))
+                        }
+                    }
+                    Text(
+                        "Durasi paket",
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(top = 14.dp)
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 6.dp)
+                    ) {
+                        PAKET_OPTIONS.forEach { m ->
+                            FilterChip(
+                                selected = duration == m,
+                                onClick = { duration = m },
+                                label = { Text(formatMinutes(m)) }
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = groupThousands(priceText),
+                        onValueChange = { v ->
+                            priceText = v.filter { c -> c.isDigit() }
+                        },
+                        label = { Text("Harga paket (Rp, boleh kosong)") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                    )
+                }
+                Button(
+                    enabled = unit != null && name.isNotBlank(),
+                    onClick = {
+                        val u = unit
+                        if (u != null) {
+                            scope.launch {
+                                dao.insertReservation(
+                                    ReservationEntity(
+                                        unitId = u.id,
+                                        unitName = u.name,
+                                        customerName = name.trim(),
+                                        startEpoch = startEpoch,
+                                        durationMinutes = duration,
+                                        price = priceText.toLongOrNull() ?: 0L
+                                    )
+                                )
+                                onSaved()
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) { Text("Simpan Reservasi") }
+            }
         }
-    )
+    }
     if (showDatePicker) {
         val dateState = rememberDatePickerState(
             initialSelectedDateMillis = dateMillis
@@ -1492,44 +1540,55 @@ private fun SessionDetailDialog(
                         }
                         sessionSnacks.forEach { item ->
                             val stock = snacks.firstOrNull { it.id == item.snackId }?.stock ?: 0
-                            Row(
+                            // SM5: item sesi jadi kartu agar jelas terpisah
+                            // dari katalog di bawahnya.
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(top = 8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.snackName, style = MaterialTheme.typography.bodyMedium)
-                                    Text(
-                                        formatRupiah(item.price) + " x " + item.qty + " = " +
-                                            formatRupiah(item.price * item.qty),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        if (item.qty <= 1) {
-                                            dao.deleteSessionSnack(item)
-                                        } else {
-                                            dao.updateSessionSnack(item.copy(qty = item.qty - 1))
-                                        }
-                                        dao.increaseStock(item.snackId, 1)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Remove, contentDescription = null)
-                                }
-                                Text(item.qty.toString(), style = MaterialTheme.typography.titleMedium)
-                                IconButton(
-                                    enabled = stock > 0,
-                                    onClick = {
-                                        scope.launch {
-                                            dao.updateSessionSnack(item.copy(qty = item.qty + 1))
-                                            dao.decreaseStock(item.snackId, 1)
-                                        }
-                                    }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(item.snackName, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            formatRupiah(item.price) + " x " + item.qty + " = " +
+                                                formatRupiah(item.price * item.qty),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    IconButton(onClick = {
+                                        scope.launch {
+                                            if (item.qty <= 1) {
+                                                dao.deleteSessionSnack(item)
+                                            } else {
+                                                dao.updateSessionSnack(item.copy(qty = item.qty - 1))
+                                            }
+                                            dao.increaseStock(item.snackId, 1)
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Remove, contentDescription = null)
+                                    }
+                                    Text(item.qty.toString(), style = MaterialTheme.typography.titleMedium)
+                                    IconButton(
+                                        enabled = stock > 0,
+                                        onClick = {
+                                            scope.launch {
+                                                dao.updateSessionSnack(item.copy(qty = item.qty + 1))
+                                                dao.decreaseStock(item.snackId, 1)
+                                            }
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null)
+                                    }
                                 }
                             }
                         }
@@ -1570,8 +1629,11 @@ private fun SessionDetailDialog(
                                             .colorScheme.onSurfaceVariant
                                     )
                                 }
-                                IconButton(
+                                // SM5: tombol tambah lingkaran besar
+                                // berisi warna agar mudah diketuk cepat.
+                                FilledIconButton(
                                     enabled = snack.stock > 0,
+                                    modifier = Modifier.size(44.dp),
                                     onClick = {
                                         scope.launch {
                                             val existing = dao.sessionSnack(
@@ -1808,13 +1870,37 @@ private fun CheckoutDialog(
     val paid = paidText.toLongOrNull() ?: 0L
     val canPay = method == PAY_QRIS || paid >= total
 
+    // PB1: total pindah ke pita navy besar di atas dialog; metode
+    // bayar jadi dua kartu besar yang labelnya hanya Tunai / QRIS.
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Pembayaran - " + session.unitName) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Row(
+                Card(
                     modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF16324F),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Pembayaran - " + session.unitName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFA9C4DE)
+                        )
+                        Text(
+                            formatRupiah(total),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
@@ -1837,37 +1923,42 @@ private fun CheckoutDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(top = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        "Total",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        formatRupiah(total),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 14.dp)
-                ) {
-                    SegmentedButton(
-                        selected = method == PAY_TUNAI,
-                        onClick = { method = PAY_TUNAI },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        label = { Text("Tunai") }
-                    )
-                    SegmentedButton(
-                        selected = method == PAY_QRIS,
-                        onClick = { method = PAY_QRIS },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        label = { Text("QRIS") }
-                    )
+                    listOf(PAY_TUNAI, PAY_QRIS).forEach { m ->
+                        val selected = method == m
+                        Card(
+                            onClick = { method = m },
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selected) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                }
+                            ),
+                            border = if (selected) {
+                                BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                            } else {
+                                null
+                            }
+                        ) {
+                            Text(
+                                if (m == PAY_TUNAI) "Tunai" else "QRIS",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = if (selected) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Normal
+                                },
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp)
+                            )
+                        }
+                    }
                 }
                 if (method == PAY_TUNAI) {
                     OutlinedTextField(
@@ -1913,7 +2004,10 @@ private fun CheckoutDialog(
                             } else {
                                 MaterialTheme.colorScheme.error
                             },
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            textAlign = TextAlign.End
                         )
                     }
                 }
@@ -1946,7 +2040,7 @@ private fun CheckoutDialog(
                         onDone(finished)
                     }
                 }
-            ) { Text("Bayar") }
+            ) { Text("Bayar " + formatRupiah(total)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Batal") }
