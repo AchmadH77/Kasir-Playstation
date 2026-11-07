@@ -556,7 +556,7 @@ private fun StartSessionDialog(
                     }
                 }
                 OutlinedTextField(
-                    value = priceText,
+                    value = groupThousands(priceText),
                     onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
                     label = { Text("Harga paket (Rp)") },
                     placeholder = { Text("mis. 10000") },
@@ -876,7 +876,7 @@ private fun SessionDetailDialog(
                                 }
                             }
                             OutlinedTextField(
-                                value = addPriceText,
+                                value = groupThousands(addPriceText),
                                 onValueChange = { v ->
                                     addPriceText = v.filter { c -> c.isDigit() }
                                 },
@@ -1140,7 +1140,7 @@ private fun CheckoutDialog(
                 }
                 if (method == PAY_TUNAI) {
                     OutlinedTextField(
-                        value = paidText,
+                        value = groupThousands(paidText),
                         onValueChange = { v -> paidText = v.filter { it.isDigit() } },
                         label = { Text("Uang diterima") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

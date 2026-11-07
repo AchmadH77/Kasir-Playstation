@@ -989,7 +989,7 @@ private fun BatchSellDialog(
                 }
                 if (method == PAY_TUNAI) {
                     OutlinedTextField(
-                        value = paidText,
+                        value = groupThousands(paidText),
                         onValueChange = { v -> paidText = v.filter { it.isDigit() } },
                         label = { Text("Uang diterima") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1123,7 +1123,7 @@ private fun SnackFormDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 TextField(
-                    value = priceText,
+                    value = groupThousands(priceText),
                     onValueChange = { v -> priceText = v.filter { c -> c.isDigit() } },
                     label = { Text("Harga (Rp)") },
                     leadingIcon = {

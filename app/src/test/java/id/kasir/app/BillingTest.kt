@@ -46,6 +46,18 @@ class BillingTest {
     }
 
     @Test
+    fun groupThousandsFormatsWhileTyping() {
+        assertEquals("", groupThousands(""))
+        assertEquals("0", groupThousands("0"))
+        assertEquals("500", groupThousands("500"))
+        assertEquals("5.000", groupThousands("5000"))
+        assertEquals("100.000", groupThousands("100000"))
+        assertEquals("1.234.567", groupThousands("1234567"))
+        assertEquals("5.000", groupThousands("5.000"))
+        assertEquals("5.000", groupThousands("50,00"))
+    }
+
+    @Test
     fun formatRupiahShortCompactsForChartLabels() {
         assertEquals("0", formatRupiahShort(0))
         assertEquals("500", formatRupiahShort(500))

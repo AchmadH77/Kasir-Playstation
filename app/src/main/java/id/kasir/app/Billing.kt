@@ -43,6 +43,24 @@ fun formatRupiah(value: Long): String {
     return "Rp " + nf.format(value)
 }
 
+// Tampilan nominal saat diketik di kolom uang: digit diberi pemisah
+// ribuan (5000 -> "5.000") supaya terbaca. State tetap digit mentah;
+// "," atau "." yang ikut terketik tersaring keluar oleh filter digit.
+fun groupThousands(digits: String): String {
+    val clean = digits.filter { it.isDigit() }.trimStart('0')
+    if (clean.isEmpty()) return if (digits.any { it.isDigit() }) "0" else ""
+    val sb = StringBuilder()
+    val first = clean.length % 3
+    if (first > 0) sb.append(clean.substring(0, first))
+    var i = first
+    while (i < clean.length) {
+        if (sb.isNotEmpty()) sb.append('.')
+        sb.append(clean.substring(i, i + 3))
+        i += 3
+    }
+    return sb.toString()
+}
+
 // Format ringkas untuk label grafik: 96000 -> "96 rb", 1500000 -> "1,5 jt".
 fun formatRupiahShort(value: Long): String {
     if (value < 1000L) return value.toString()
