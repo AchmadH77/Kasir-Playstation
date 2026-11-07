@@ -457,7 +457,7 @@ private fun UnitRow(unit: UnitEntity, session: SessionEntity?, onClick: () -> Un
                 )
                 Text(
                     when {
-                        session == null -> formatRupiah(effectiveRate(unit))
+                        session == null -> "Siap dipakai"
                         paused -> "Sedang jeda"
                         overtime -> "Lewat waktu"
                         session.mode == MODE_PAKET -> "Paket " + formatMinutes(session.paketMinutes)
