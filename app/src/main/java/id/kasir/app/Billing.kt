@@ -2,6 +2,7 @@ package id.kasir.app
 
 import id.kasir.app.data.ReservationEntity
 import id.kasir.app.data.SessionEntity
+import id.kasir.app.data.SnackSaleEntity
 import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.UnitEntity
 import java.text.NumberFormat
@@ -193,4 +194,22 @@ fun startOfMonth(epoch: Long): Long {
     c.timeInMillis = startOfDay(epoch)
     c.set(Calendar.DAY_OF_MONTH, 1)
     return c.timeInMillis
+}
+
+// Pendapatan per jam (0-23) untuk grafik Jam Tersibuk di Laporan:
+// sesi dihitung pada jam selesainya (endEpoch), penjualan langsung
+// pada jam transaksinya; yang dijumlahkan adalah total masing-masing.
+fun hourlyTotals(
+    sessions: List<SessionEntity>,
+    sales: List<SnackSaleEntity>
+): LongArray {
+    val buckets = LongArray(24)
+    val cal = Calendar.getInstance()
+    fun add(epoch: Long, total: Long) {
+        cal.timeInMillis = epoch
+        buckets[cal.get(Calendar.HOUR_OF_DAY)] += total
+    }
+    sessions.forEach { s -> s.endEpoch?.let { add(it, s.total) } }
+    sales.forEach { add(it.epoch, it.total) }
+    return buckets
 }

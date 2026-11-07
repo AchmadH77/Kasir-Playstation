@@ -1573,6 +1573,11 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
         dayNames[dow - 1] to totalDay
     }
     val maxDay = last7.maxOf { it.second }
+    // Jam tersibuk: pendapatan per jam mengikuti periode yang dipilih
+    // (beda dengan grafik 7 hari yang selalu 7 hari terakhir).
+    val hourly = hourlyTotals(periodSessions, periodSales)
+    val maxHourly = hourly.max()
+    val peakHour = hourly.indexOf(maxHourly)
 
     Column(modifier = Modifier.fillMaxSize()) {
         SingleChoiceSegmentedButtonRow(
@@ -1800,6 +1805,97 @@ fun LaporanTab(dao: KasirDao, notify: (String) -> Unit) {
                                 )
                             }
                         }
+                    }
+                }
+            }
+            item {
+                Text(
+                    "Jam Tersibuk",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            hourly.forEachIndexed { hour, totalHour ->
+                                val frac = if (maxHourly > 0) {
+                                    totalHour.toFloat() / maxHourly.toFloat()
+                                } else {
+                                    0f
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(72.dp),
+                                        contentAlignment = Alignment.BottomCenter
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.72f)
+                                                .height(
+                                                    (72f * frac)
+                                                        .coerceAtLeast(3f).dp
+                                                )
+                                                .background(
+                                                    if (hour == peakHour &&
+                                                        maxHourly > 0
+                                                    ) {
+                                                        MaterialTheme.colorScheme
+                                                            .primary
+                                                    } else {
+                                                        MaterialTheme.colorScheme
+                                                            .primaryContainer
+                                                    },
+                                                    RoundedCornerShape(3.dp)
+                                                )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                        ) {
+                            (0..7).forEach { step ->
+                                Text(
+                                    "%02d".format(step * 3),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme
+                                        .colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(3f)
+                                )
+                            }
+                        }
+                        Text(
+                            if (maxHourly > 0) {
+                                "Paling ramai jam " +
+                                    "%02d.00".format(peakHour) + "-" +
+                                    "%02d.00".format((peakHour + 1) % 24) +
+                                    " dengan total " + formatRupiah(maxHourly)
+                            } else {
+                                "Belum ada pendapatan pada periode ini."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     }
                 }
             }

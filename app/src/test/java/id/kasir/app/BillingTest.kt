@@ -2,6 +2,7 @@ package id.kasir.app
 
 import id.kasir.app.data.ReservationEntity
 import id.kasir.app.data.SessionEntity
+import id.kasir.app.data.SnackSaleEntity
 import id.kasir.app.data.SnackEntity
 import id.kasir.app.data.UnitEntity
 import java.util.Calendar
@@ -273,5 +274,39 @@ class BillingTest {
             pausedMillis = 5 * min
         )
         assertEquals(1_000_000L + 5 * min + 120 * min, paketEndEpoch(s))
+    }
+
+    @Test
+    fun hourlyTotalsBucketsSessionsAndSalesByLocalHour() {
+        fun atHour(hour: Int): Long {
+            val c = Calendar.getInstance()
+            c.set(Calendar.HOUR_OF_DAY, hour)
+            c.set(Calendar.MINUTE, 15)
+            c.set(Calendar.SECOND, 0)
+            c.set(Calendar.MILLISECOND, 0)
+            return c.timeInMillis
+        }
+        val sessions = listOf(
+            session(endEpoch = atHour(19)).copy(total = 50_000),
+            session(endEpoch = atHour(19)).copy(total = 10_000),
+            session(endEpoch = atHour(10)).copy(total = 5_000),
+            session(endEpoch = null)
+        )
+        val sales = listOf(
+            SnackSaleEntity(
+                snackId = 1,
+                snackName = "Indomie Goreng",
+                price = 7_000,
+                qty = 1,
+                total = 7_000,
+                epoch = atHour(19),
+                paymentMethod = PAY_TUNAI
+            )
+        )
+        val buckets = hourlyTotals(sessions, sales)
+        assertEquals(24, buckets.size)
+        assertEquals(67_000L, buckets[19])
+        assertEquals(5_000L, buckets[10])
+        assertEquals(72_000L, buckets.sum())
     }
 }
