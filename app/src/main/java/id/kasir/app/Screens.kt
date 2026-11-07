@@ -1899,22 +1899,102 @@ fun LainnyaTab(
         )
     }
     if (showAbout) {
-        AlertDialog(
-            onDismissRequest = { showAbout = false },
-            title = { Text("Tentang Kasir") },
-            text = {
-                Text(
-                    "Kasir rental PlayStation versi 1.0.0.\n\n" +
-                        "Fitur: billing per unit dengan paket berharga manual, " +
-                        "timer akurat dari waktu mulai, makanan menyatu di tagihan sesi, " +
-                        "laporan pendapatan, " +
-                        "serta struk yang bisa dibagikan. Semua data tersimpan lokal di HP."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showAbout = false }) { Text("Tutup") }
+        // A5: pita hijau tua di kepala dialog + kisi fitur 2 kolom.
+        Dialog(onDismissRequest = { showAbout = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(
+                                RoundedCornerShape(
+                                    topStart = 24.dp,
+                                    topEnd = 24.dp
+                                )
+                            )
+                            .background(Color(0xFF123D26))
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Tv,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Text(
+                                "Tentang Kasir",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                storeName + " - versi 1.0.0",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFA9CDB5)
+                            )
+                        }
+                    }
+                    val tiles = listOf(
+                        "Paket Manual" to "Billing per unit",
+                        "Timer Akurat" to "Dari waktu mulai",
+                        "Makanan Sesi" to "Menyatu di tagihan",
+                        "Laporan" to "Pendapatan + CSV",
+                        "Struk" to "Bisa dibagikan",
+                        "Backup" to "JSON, lokal di HP"
+                    )
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        tiles.chunked(2).forEach { rowTiles ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                rowTiles.forEach { (tileTitle, tileSub) ->
+                                    Card(
+                                        modifier = Modifier.weight(1f),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme
+                                                .colorScheme.surfaceContainerHigh
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 10.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                tileTitle,
+                                                style = MaterialTheme
+                                                    .typography.titleSmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                tileSub,
+                                                style = MaterialTheme
+                                                    .typography.bodySmall,
+                                                color = MaterialTheme
+                                                    .colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        TextButton(
+                            onClick = { showAbout = false },
+                            modifier = Modifier.align(Alignment.End)
+                        ) { Text("Tutup") }
+                    }
+                }
             }
-        )
+        }
     }
     pendingRestore?.let { data ->
         AlertDialog(
