@@ -884,9 +884,19 @@ private fun BatchSellDialog(
     var paidText by remember { mutableStateOf("") }
     var sold by remember { mutableStateOf<SnackSaleSnapshot?>(null) }
     val scope = rememberCoroutineScope()
-    val total = items.sumOf { it.first.price * it.second }
+    // E2: jumlah tiap item masih bisa diubah di dialog ini; total,
+    // kembalian, penjualan, dan struk mengikuti jumlah terakhir.
+    var qtys by remember {
+        mutableStateOf(items.associate { it.first.id to it.second })
+    }
+    val liveItems = items.mapNotNull { (snack, _) ->
+        val q = qtys[snack.id] ?: 0
+        if (q > 0) snack to q else null
+    }
+    val total = liveItems.sumOf { it.first.price * it.second }
     val paid = paidText.toLongOrNull() ?: 0L
-    val canPay = method == PAY_QRIS || paid >= total
+    val canPay = liveItems.isNotEmpty() &&
+        (method == PAY_QRIS || paid >= total)
     val soldSnapshot = sold
     if (soldSnapshot != null) {
         // Pembayaran berhasil: tampilkan struk dulu; pilihan jualan
@@ -907,7 +917,7 @@ private fun BatchSellDialog(
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 // B2: baris item memakai petak inisial berwarna yang sama
                 // dengan daftar jajan (warna stabil dari nama menu).
-                items.forEach { (snack, qty) ->
+                liveItems.forEach { (snack, qty) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -931,11 +941,40 @@ private fun BatchSellDialog(
                             )
                         }
                         Text(
-                            snack.name + " x" + qty,
+                            snack.name,
                             style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(start = 10.dp)
+                            modifier = Modifier
+                                .padding(start = 10.dp)
+                                .weight(1f)
                         )
-                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = {
+                                qtys = qtys + (snack.id to qty - 1)
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Remove,
+                                contentDescription = null
+                            )
+                        }
+                        Text(
+                            qty.toString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(
+                            enabled = qty < snack.stock,
+                            onClick = {
+                                qtys = qtys + (snack.id to qty + 1)
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null
+                            )
+                        }
                         Text(
                             formatRupiah(snack.price * qty),
                             style = MaterialTheme.typography.bodyMedium
@@ -1044,7 +1083,7 @@ private fun BatchSellDialog(
                 onClick = {
                     scope.launch {
                         val nowMs = System.currentTimeMillis()
-                        items.forEach { (snack, qty) ->
+                        liveItems.forEach { (snack, qty) ->
                             dao.insertSnackSale(
                                 SnackSaleEntity(
                                     snackId = snack.id,
@@ -1059,7 +1098,7 @@ private fun BatchSellDialog(
                             dao.decreaseStock(snack.id, qty)
                         }
                         sold = SnackSaleSnapshot(
-                            items = items,
+                            items = liveItems,
                             total = total,
                             method = method,
                             paid = if (method == PAY_QRIS) total else paid,
