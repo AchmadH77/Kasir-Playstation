@@ -55,7 +55,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -681,7 +680,6 @@ private fun SessionDetailDialog(
     val sessionSnacks by dao.sessionSnacksFlow(session.id).collectAsState(initial = emptyList())
     val snacks by dao.snacksFlow().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
-    var showAddSnack by remember { mutableStateOf(false) }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmVoid by remember { mutableStateOf(false) }
     var tab by remember { mutableIntStateOf(0) }
@@ -867,12 +865,79 @@ private fun SessionDetailDialog(
                                 }
                             }
                         }
-                        FilledTonalButton(
-                            onClick = { showAddSnack = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 10.dp)
-                        ) { Text("Tambah Makanan") }
+                        // T1: katalog menyatu di tab ini, jadi tidak
+                        // ada dialog kedua yang menutupi dialog sesi.
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                        Text(
+                            "Semua menu - ketuk + untuk menambah",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        if (snacks.isEmpty()) {
+                            Text(
+                                "Menu makanan masih kosong.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+                        snacks.forEach { snack ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        snack.name,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        formatRupiah(snack.price) + " - stok " +
+                                            snack.stock,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme
+                                            .colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                IconButton(
+                                    enabled = snack.stock > 0,
+                                    onClick = {
+                                        scope.launch {
+                                            val existing = dao.sessionSnack(
+                                                session.id,
+                                                snack.id
+                                            )
+                                            if (existing != null) {
+                                                dao.updateSessionSnack(
+                                                    existing.copy(
+                                                        qty = existing.qty + 1
+                                                    )
+                                                )
+                                            } else {
+                                                dao.insertSessionSnack(
+                                                    SessionSnackEntity(
+                                                        sessionId = session.id,
+                                                        snackId = snack.id,
+                                                        snackName = snack.name,
+                                                        price = snack.price,
+                                                        qty = 1
+                                                    )
+                                                )
+                                            }
+                                            dao.decreaseStock(snack.id, 1)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+                        }
                     }
                     else -> {
                         if (paused) {
@@ -1020,13 +1085,6 @@ private fun SessionDetailDialog(
         }
     }
 
-    if (showAddSnack) {
-        AddSnackDialog(
-            dao = dao,
-            session = session,
-            onDismiss = { showAddSnack = false }
-        )
-    }
     if (showCheckout) {
         CheckoutDialog(
             dao = dao,
@@ -1058,68 +1116,6 @@ private fun SessionDetailDialog(
             }
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddSnackDialog(dao: KasirDao, session: SessionEntity, onDismiss: () -> Unit) {
-    val snacks by dao.snacksFlow().collectAsState(initial = emptyList())
-    val scope = rememberCoroutineScope()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Tambah Makanan") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                if (snacks.isEmpty()) {
-                    Text("Menu makanan masih kosong.")
-                }
-                snacks.forEach { snack ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(snack.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                formatRupiah(snack.price) + " - stok " + snack.stock,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(
-                            enabled = snack.stock > 0,
-                            onClick = {
-                                scope.launch {
-                                    val existing = dao.sessionSnack(session.id, snack.id)
-                                    if (existing != null) {
-                                        dao.updateSessionSnack(existing.copy(qty = existing.qty + 1))
-                                    } else {
-                                        dao.insertSessionSnack(
-                                            SessionSnackEntity(
-                                                sessionId = session.id,
-                                                snackId = snack.id,
-                                                snackName = snack.name,
-                                                price = snack.price,
-                                                qty = 1
-                                            )
-                                        )
-                                    }
-                                    dao.decreaseStock(snack.id, 1)
-                                }
-                            }
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Selesai") }
-        }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
