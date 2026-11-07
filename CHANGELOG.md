@@ -9,6 +9,9 @@ build, and this file's Unreleased section will roll into it.
 
 ### Added
 
+- Swipe tab navigation: the four tabs live in a HorizontalPager — swipe
+  to move between tabs, dock taps animate to the target page, and the
+  header follows the visible page.
 - Expense logging (database v4): record operating expenses from Reports —
   the hero card gains a net-profit line, an expense card and list follow
   the selected period, and the CSV export includes expenses and net

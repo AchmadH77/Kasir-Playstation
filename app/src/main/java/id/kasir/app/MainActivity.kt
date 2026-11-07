@@ -21,6 +21,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -42,6 +43,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -183,7 +186,7 @@ private fun expressiveTransform(motionScheme: MotionScheme, direction: Int): Con
             })
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun KasirApp(
     openSignal: Long? = null,
@@ -199,7 +202,11 @@ private fun KasirApp(
         )
     }
     val dark = darkOverride ?: systemDark
-    var tab by remember { mutableIntStateOf(0) }
+    // Navigasi tab berbasis pager: pengguna bisa menggeser (swipe)
+    // antar tab, dan ketukan di dock menganimasikan ke halaman tujuan.
+    // `tab` membaca halaman yang sedang terlihat, untuk header + dock.
+    val pagerState = rememberPagerState(initialPage = 0) { 4 }
+    val tab = pagerState.currentPage
     var showUnitManage by remember { mutableStateOf(false) }
     // Sinyal dari pop-up waktu habis: tab Unit membuka rincian sesi ini.
     var openRequest by remember { mutableStateOf<Long?>(null) }
@@ -210,7 +217,7 @@ private fun KasirApp(
         val sid = openSignal
         if (sid != null) {
             expiredNotified = expiredNotified + sid
-            tab = 0
+            pagerState.animateScrollToPage(0)
             openRequest = sid
             onOpenSignalConsumed()
         }
@@ -294,20 +301,14 @@ private fun KasirApp(
                         .padding(padding)
                         .fillMaxSize()
                 ) {
-                    AnimatedContent(
-                        targetState = tab,
-                        transitionSpec = {
-                            expressiveTransform(
-                                motionScheme,
-                                if (targetState > initialState) 1 else -1
-                            )
-                        },
+                    HorizontalPager(
+                        state = pagerState,
+                        beyondViewportPageCount = 1,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(bottom = 120.dp),
-                        label = "tab"
-                    ) { target ->
-                        when (target) {
+                            .padding(bottom = 120.dp)
+                    ) { page ->
+                        when (page) {
                             0 -> UnitTab(
                                 dao = dao,
                                 notify = notify,
@@ -330,7 +331,9 @@ private fun KasirApp(
                     }
                     FloatingDock(
                         selected = tab,
-                        onSelect = { tab = it },
+                        onSelect = {
+                            scope.launch { pagerState.animateScrollToPage(it) }
+                        },
                         foodBadge = lowFoodCount,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
@@ -408,7 +411,7 @@ private fun KasirApp(
                     Button(
                         onClick = {
                             expiredNotified = expiredNotified + expiredPopup.id
-                            tab = 0
+                            scope.launch { pagerState.animateScrollToPage(0) }
                             openRequest = expiredPopup.id
                         }
                     ) { Text("Buka Sesi") }

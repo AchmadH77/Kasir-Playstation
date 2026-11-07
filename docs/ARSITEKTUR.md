@@ -7,7 +7,7 @@ This document summarizes the technical decisions behind Kasir (a PlayStation ren
 - A single-activity Android app (`MainActivity`); the entire UI is Jetpack Compose.
 - 100% offline: all data lives in a local Room database; no network, accounts, or server.
 - No ViewModel: composables read DAO `Flow`s directly (`collectAsState`) and write through `rememberCoroutineScope`. Pure calculation logic is separated into `Billing.kt` so it can be unit tested.
-- Navigation is a simple `Int` tab state (Unit, Snacks, Reports, More) + `AnimatedContent` with Material 3 Expressive spring transitions, plus one full-screen Unit Management screen that replaces the main shell while open.
+- Navigation is a `HorizontalPager` over the four tabs (Unit, Snacks, Reports, More): users swipe between tabs and dock taps animate to the target page, with the header and dock following the visible page. The Unit Management screen still replaces the main shell via `AnimatedContent` with Material 3 Expressive spring transitions while open.
 
 ## Stack
 
