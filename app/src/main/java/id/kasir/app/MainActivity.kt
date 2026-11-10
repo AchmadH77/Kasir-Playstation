@@ -144,7 +144,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.room.InvalidationTracker
 import id.kasir.app.data.FirebaseKit
 import id.kasir.app.data.HasilSync
@@ -316,47 +315,6 @@ private fun KasirApp(
         }
     }
 
-    fun aksiMasukEmail(email: String, sandi: String) {
-        scope.launch {
-            sibukOnline = true
-            pesanOnline = null
-            try {
-                emailOnline = FirebaseKit.masukDenganEmail(email.trim(), sandi)
-                lewatiLogin = false
-            } catch (e: Exception) {
-                pesanOnline = e.message ?: "Gagal masuk"
-            } finally {
-                sibukOnline = false
-            }
-        }
-    }
-
-    fun aksiDaftarEmail(email: String, sandi: String) {
-        scope.launch {
-            sibukOnline = true
-            pesanOnline = null
-            try {
-                emailOnline = FirebaseKit.daftarDenganEmail(email.trim(), sandi)
-                lewatiLogin = false
-            } catch (e: Exception) {
-                pesanOnline = e.message ?: "Gagal mendaftar"
-            } finally {
-                sibukOnline = false
-            }
-        }
-    }
-
-    fun aksiResetSandi(email: String) {
-        scope.launch {
-            try {
-                FirebaseKit.kirimResetSandi(email.trim())
-                pesanOnline = "Email atur ulang kata sandi terkirim. Cek kotak masukmu."
-            } catch (e: Exception) {
-                pesanOnline = e.message ?: "Gagal mengirim email atur ulang"
-            }
-        }
-    }
-
     LaunchedEffect(emailOnline) {
         if (emailOnline != null) {
             // Konsolidasi ganti akun: akun berbeda dari akun sinkron
@@ -457,9 +415,6 @@ private fun KasirApp(
                 pesanGalat = pesanOnline,
                 googleSiap = FirebaseKit.googleSiap(context),
                 onMasukGoogle = { aksiMasukGoogle() },
-                onMasukEmail = { e, s -> aksiMasukEmail(e, s) },
-                onDaftar = { e, s -> aksiDaftarEmail(e, s) },
-                onReset = { e -> aksiResetSandi(e) },
                 onLewati = { lewatiLogin = true }
             )
         } else {
@@ -2543,13 +2498,8 @@ private fun LayarLogin(
     pesanGalat: String?,
     googleSiap: Boolean,
     onMasukGoogle: () -> Unit,
-    onMasukEmail: (String, String) -> Unit,
-    onDaftar: (String, String) -> Unit,
-    onReset: (String) -> Unit,
     onLewati: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var sandi by remember { mutableStateOf("") }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2642,79 +2592,21 @@ private fun LayarLogin(
                             modifier = Modifier.padding(start = 10.dp)
                         )
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 14.dp)
-                    ) {
-                        HorizontalDivider(Modifier.weight(1f))
-                        Text(
-                            "atau pakai email",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 10.dp)
-                        )
-                        HorizontalDivider(Modifier.weight(1f))
-                    }
                 } else {
                     Text(
-                        "Login Google belum aktif di build ini; pakai email di bawah.",
+                        "Login Google belum aktif di build ini (konfigurasi Firebase belum lengkap). " +
+                            "Pakai mode tamu dulu lewat tombol Lewati di bawah.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = sandi,
-                    onValueChange = { sandi = it },
-                    label = { Text("Kata sandi") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp)
-                )
                 if (pesanGalat != null) {
                     Text(
                         pesanGalat,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 10.dp)
+                        modifier = Modifier.padding(top = 12.dp)
                     )
-                }
-                Button(
-                    onClick = { onMasukEmail(email, sandi) },
-                    enabled = !sibuk && email.isNotBlank() && sandi.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                ) {
-                    Text("Masuk")
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(
-                        onClick = { onDaftar(email, sandi) },
-                        enabled = !sibuk && email.isNotBlank() && sandi.isNotBlank()
-                    ) { Text("Daftar") }
-                    TextButton(
-                        onClick = { onReset(email) },
-                        enabled = !sibuk && email.isNotBlank()
-                    ) { Text("Lupa kata sandi?") }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 TextButton(

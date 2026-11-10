@@ -5,7 +5,7 @@ source of truth and the app works fully without internet. Online Mode
 adds an optional per-account cloud mirror in Cloud Firestore, using the
 same design as KasBulanan and Apotek Lestari:
 
-- Sign in with Google or email/password (or skip and stay a guest;
+- Sign in with Google (or skip and stay a guest;
   guest data lives only on the phone).
 - Every row of the seven tables carries sync fields (`remoteId`,
   `updatedAt`, soft-delete tombstone, dirty flag; database v5).
@@ -35,8 +35,8 @@ offline app.
 3. In that app's settings, add the release certificate SHA-1
    fingerprint (needed for Google sign-in):
    `83:67:81:6C:2D:E7:64:6E:BC:B1:DF:74:AB:13:7F:AB:BB:08:1D:57`
-4. Under Authentication -> Sign-in method, enable **Email/Password**
-   and **Google**.
+4. Under Authentication -> Sign-in method, enable **Google** (the
+   gate is Google-only, like Apotek Lestari).
 5. Create a Cloud Firestore database (production mode is fine) and
    publish the rules from `firestore.rules` at the repo root
    (Firestore Database -> Rules). If the project is shared with the
@@ -67,9 +67,8 @@ Under `users/{uid}/`, one document per row, keyed by `remoteId`:
 - Always use ONE primary account. The app consolidates automatically
   when you sign in with a different account, but the other account's
   tree keeps its older partial copy - simplest is to never use it.
-- An account created with Google sign-in has no password credential:
-  the email form cannot sign it in. Use "Masuk dengan Google" for it,
-  and never register the same email again (that would split the data).
+- Sign-in is Google-only: there is no password to manage, and the
+  split-account trap of mixing sign-in methods cannot happen.
 - Sessions are records: a running session synced to a second phone
   shows the same timers (they derive from the stored start time), but
   system alarms and notifications stay per-device, and if the same

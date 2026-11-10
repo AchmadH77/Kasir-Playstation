@@ -48,24 +48,6 @@ object FirebaseKit {
         auth()?.signOut()
     }
 
-    suspend fun masukDenganEmail(email: String, sandi: String): String {
-        val auth = auth() ?: throw IllegalStateException("Firebase belum dikonfigurasi")
-        val hasil = auth.signInWithEmailAndPassword(email, sandi).await()
-        return hasil.user?.email ?: email
-    }
-
-    suspend fun daftarDenganEmail(email: String, sandi: String): String {
-        val auth = auth() ?: throw IllegalStateException("Firebase belum dikonfigurasi")
-        val hasil = auth.createUserWithEmailAndPassword(email, sandi).await()
-        return hasil.user?.email ?: email
-    }
-
-    /** Kirim email atur ulang kata sandi (dibangunkan Firebase Auth). */
-    suspend fun kirimResetSandi(email: String) {
-        val auth = auth() ?: throw IllegalStateException("Firebase belum dikonfigurasi")
-        auth.sendPasswordResetEmail(email).await()
-    }
-
     /**
      * Login Google hanya mungkin bila google-services.json memuat web
      * client id (muncul setelah provider Google diaktifkan dan sidik
