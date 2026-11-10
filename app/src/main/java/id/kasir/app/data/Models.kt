@@ -11,7 +11,11 @@ data class UnitEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val consoleType: String,
-    val hourlyRate: Long
+    val hourlyRate: Long,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )
 
 // Menu jajan / F&B yang bisa ditambahkan ke tagihan sesi atau dijual langsung.
@@ -21,7 +25,11 @@ data class SnackEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val price: Long,
-    val stock: Int
+    val stock: Int,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )
 
 // Satu sesi main. Timer dihitung dari startEpoch dikurangi total jeda,
@@ -48,7 +56,11 @@ data class SessionEntity(
     val total: Long = 0,
     val paymentMethod: String? = null,
     val paidAmount: Long = 0,
-    val changeAmount: Long = 0
+    val changeAmount: Long = 0,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )
 
 // Jajan yang menempel pada satu sesi (satu baris per jenis jajan).
@@ -60,7 +72,11 @@ data class SessionSnackEntity(
     val snackId: Long,
     val snackName: String,
     val price: Long,
-    val qty: Int
+    val qty: Int,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )
 
 // Penjualan jajan langsung untuk pelanggan yang tidak main.
@@ -74,7 +90,11 @@ data class SnackSaleEntity(
     val qty: Int,
     val total: Long,
     val epoch: Long,
-    val paymentMethod: String
+    val paymentMethod: String,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )
 
 
@@ -90,7 +110,11 @@ data class ReservationEntity(
     val customerName: String,
     val startEpoch: Long,
     val durationMinutes: Int,
-    val price: Long = 0
+    val price: Long = 0,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )
 
 // Pengeluaran operasional (fitur Catat Pengeluaran): biaya seperti
@@ -102,5 +126,9 @@ data class ExpenseEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val amount: Long,
-    val epoch: Long
+    val epoch: Long,
+    val remoteId: String = "",
+    val updatedAt: Long = 0,
+    val terhapus: Int = 0,
+    val kotor: Int = 1
 )

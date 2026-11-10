@@ -5,7 +5,6 @@ import androidx.room.Dao
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.Database
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Room
@@ -17,10 +16,10 @@ import kotlinx.coroutines.flow.Flow
 interface KasirDao {
 
     // Unit
-    @Query("SELECT * FROM units ORDER BY name ASC")
+    @Query("SELECT * FROM units WHERE terhapus = 0 ORDER BY name ASC")
     fun unitsFlow(): Flow<List<UnitEntity>>
 
-    @Query("SELECT COUNT(*) FROM units")
+    @Query("SELECT COUNT(*) FROM units WHERE terhapus = 0")
     suspend fun unitCount(): Int
 
     @Insert
@@ -29,14 +28,14 @@ interface KasirDao {
     @Update
     suspend fun updateUnit(unit: UnitEntity)
 
-    @Delete
-    suspend fun deleteUnit(unit: UnitEntity)
+    @Query("UPDATE units SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun deleteUnit(id: Long, now: Long)
 
     // Jajan
-    @Query("SELECT * FROM snacks ORDER BY name ASC")
+    @Query("SELECT * FROM snacks WHERE terhapus = 0 ORDER BY name ASC")
     fun snacksFlow(): Flow<List<SnackEntity>>
 
-    @Query("SELECT COUNT(*) FROM snacks")
+    @Query("SELECT COUNT(*) FROM snacks WHERE terhapus = 0")
     suspend fun snackCount(): Int
 
     @Insert
@@ -45,23 +44,23 @@ interface KasirDao {
     @Update
     suspend fun updateSnack(snack: SnackEntity)
 
-    @Delete
-    suspend fun deleteSnack(snack: SnackEntity)
+    @Query("UPDATE snacks SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun deleteSnack(id: Long, now: Long)
 
-    @Query("UPDATE snacks SET stock = stock - :qty WHERE id = :id")
-    suspend fun decreaseStock(id: Long, qty: Int)
+    @Query("UPDATE snacks SET stock = stock - :qty, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun decreaseStock(id: Long, qty: Int, now: Long)
 
-    @Query("UPDATE snacks SET stock = stock + :qty WHERE id = :id")
-    suspend fun increaseStock(id: Long, qty: Int)
+    @Query("UPDATE snacks SET stock = stock + :qty, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun increaseStock(id: Long, qty: Int, now: Long)
 
     // Sesi
-    @Query("SELECT * FROM sessions WHERE status != 'FINISHED' ORDER BY startEpoch ASC")
+    @Query("SELECT * FROM sessions WHERE status != 'FINISHED' AND terhapus = 0 ORDER BY startEpoch ASC")
     fun activeSessionsFlow(): Flow<List<SessionEntity>>
 
-    @Query("SELECT * FROM sessions WHERE status = 'FINISHED' ORDER BY endEpoch DESC")
+    @Query("SELECT * FROM sessions WHERE status = 'FINISHED' AND terhapus = 0 ORDER BY endEpoch DESC")
     fun finishedSessionsFlow(): Flow<List<SessionEntity>>
 
-    @Query("SELECT * FROM sessions WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM sessions WHERE id = :id AND terhapus = 0 LIMIT 1")
     suspend fun sessionOnce(id: Long): SessionEntity?
 
     @Insert
@@ -70,17 +69,17 @@ interface KasirDao {
     @Update
     suspend fun updateSession(session: SessionEntity)
 
-    @Delete
-    suspend fun deleteSession(session: SessionEntity)
+    @Query("UPDATE sessions SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun deleteSession(id: Long, now: Long)
 
     // Jajan di dalam sesi
-    @Query("SELECT * FROM session_snacks WHERE sessionId = :sessionId ORDER BY snackName ASC")
+    @Query("SELECT * FROM session_snacks WHERE sessionId = :sessionId AND terhapus = 0 ORDER BY snackName ASC")
     fun sessionSnacksFlow(sessionId: Long): Flow<List<SessionSnackEntity>>
 
-    @Query("SELECT * FROM session_snacks WHERE sessionId = :sessionId")
+    @Query("SELECT * FROM session_snacks WHERE sessionId = :sessionId AND terhapus = 0")
     suspend fun sessionSnacksOnce(sessionId: Long): List<SessionSnackEntity>
 
-    @Query("SELECT * FROM session_snacks WHERE sessionId = :sessionId AND snackId = :snackId LIMIT 1")
+    @Query("SELECT * FROM session_snacks WHERE sessionId = :sessionId AND snackId = :snackId AND terhapus = 0 LIMIT 1")
     suspend fun sessionSnack(sessionId: Long, snackId: Long): SessionSnackEntity?
 
     @Insert
@@ -89,34 +88,34 @@ interface KasirDao {
     @Update
     suspend fun updateSessionSnack(item: SessionSnackEntity)
 
-    @Delete
-    suspend fun deleteSessionSnack(item: SessionSnackEntity)
+    @Query("UPDATE session_snacks SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun deleteSessionSnack(id: Long, now: Long)
 
-    @Query("DELETE FROM session_snacks WHERE sessionId = :sessionId")
-    suspend fun deleteSessionSnacks(sessionId: Long)
+    @Query("UPDATE session_snacks SET terhapus = 1, kotor = 1, updatedAt = :now WHERE sessionId = :sessionId")
+    suspend fun deleteSessionSnacks(sessionId: Long, now: Long)
 
     // Penjualan jajan langsung
-    @Query("SELECT * FROM snack_sales ORDER BY epoch DESC")
+    @Query("SELECT * FROM snack_sales WHERE terhapus = 0 ORDER BY epoch DESC")
     fun snackSalesFlow(): Flow<List<SnackSaleEntity>>
 
     @Insert
     suspend fun insertSnackSale(sale: SnackSaleEntity): Long
 
     // Reservasi unit
-    @Query("SELECT * FROM reservations ORDER BY startEpoch ASC")
+    @Query("SELECT * FROM reservations WHERE terhapus = 0 ORDER BY startEpoch ASC")
     fun reservationsFlow(): Flow<List<ReservationEntity>>
 
-    @Query("SELECT * FROM reservations WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM reservations WHERE id = :id AND terhapus = 0 LIMIT 1")
     suspend fun reservationOnce(id: Long): ReservationEntity?
 
     @Insert
     suspend fun insertReservation(reservation: ReservationEntity): Long
 
-    @Delete
-    suspend fun deleteReservation(reservation: ReservationEntity)
+    @Query("UPDATE reservations SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun deleteReservation(id: Long, now: Long)
 
     // Pengeluaran operasional
-    @Query("SELECT * FROM expenses ORDER BY epoch DESC")
+    @Query("SELECT * FROM expenses WHERE terhapus = 0 ORDER BY epoch DESC")
     fun expensesFlow(): Flow<List<ExpenseEntity>>
 
     @Insert
@@ -125,8 +124,118 @@ interface KasirDao {
     @Update
     suspend fun updateExpense(expense: ExpenseEntity)
 
-    @Delete
-    suspend fun deleteExpense(expense: ExpenseEntity)
+    @Query("UPDATE expenses SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
+    suspend fun deleteExpense(id: Long, now: Long)
+
+
+    // ---- Permukaan sinkron (Mode Online) ----
+    // Baris kotor menunggu naik; getByRemoteId mencari pasangan lokal
+    // dari dokumen awan; purge membuang kuburan yang sudah bersih.
+
+    @Query("SELECT * FROM units WHERE kotor = 1")
+    suspend fun unitsKotor(): List<UnitEntity>
+
+    @Query("SELECT * FROM units WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun unitByRemoteId(remoteId: String): UnitEntity?
+
+    @Query("UPDATE units SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun unitTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM units WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeUnits(): Int
+
+    @Query("UPDATE units SET kotor = 1")
+    suspend fun unitsTandaiSemuaKotor(): Int
+
+    @Query("SELECT * FROM snacks WHERE kotor = 1")
+    suspend fun snacksKotor(): List<SnackEntity>
+
+    @Query("SELECT * FROM snacks WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun snackByRemoteId(remoteId: String): SnackEntity?
+
+    @Query("UPDATE snacks SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun snackTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM snacks WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeSnacks(): Int
+
+    @Query("UPDATE snacks SET kotor = 1")
+    suspend fun snacksTandaiSemuaKotor(): Int
+
+    @Query("SELECT * FROM sessions WHERE kotor = 1")
+    suspend fun sessionsKotor(): List<SessionEntity>
+
+    @Query("SELECT * FROM sessions WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun sessionByRemoteId(remoteId: String): SessionEntity?
+
+    @Query("UPDATE sessions SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun sessionTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM sessions WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeSessions(): Int
+
+    @Query("UPDATE sessions SET kotor = 1")
+    suspend fun sessionsTandaiSemuaKotor(): Int
+
+    @Query("SELECT * FROM session_snacks WHERE kotor = 1")
+    suspend fun sessionSnacksKotor(): List<SessionSnackEntity>
+
+    @Query("SELECT * FROM session_snacks WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun sessionSnackByRemoteId(remoteId: String): SessionSnackEntity?
+
+    @Query("UPDATE session_snacks SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun sessionSnackTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM session_snacks WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeSessionSnacks(): Int
+
+    @Query("UPDATE session_snacks SET kotor = 1")
+    suspend fun sessionSnacksTandaiSemuaKotor(): Int
+
+    @Query("SELECT * FROM snack_sales WHERE kotor = 1")
+    suspend fun snackSalesKotor(): List<SnackSaleEntity>
+
+    @Query("SELECT * FROM snack_sales WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun snackSaleByRemoteId(remoteId: String): SnackSaleEntity?
+
+    @Query("UPDATE snack_sales SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun snackSaleTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM snack_sales WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeSnackSales(): Int
+
+    @Query("UPDATE snack_sales SET kotor = 1")
+    suspend fun snackSalesTandaiSemuaKotor(): Int
+
+    @Query("SELECT * FROM reservations WHERE kotor = 1")
+    suspend fun reservationsKotor(): List<ReservationEntity>
+
+    @Query("SELECT * FROM reservations WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun reservationByRemoteId(remoteId: String): ReservationEntity?
+
+    @Query("UPDATE reservations SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun reservationTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM reservations WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeReservations(): Int
+
+    @Query("UPDATE reservations SET kotor = 1")
+    suspend fun reservationsTandaiSemuaKotor(): Int
+
+    @Query("SELECT * FROM expenses WHERE kotor = 1")
+    suspend fun expensesKotor(): List<ExpenseEntity>
+
+    @Query("SELECT * FROM expenses WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun expenseByRemoteId(remoteId: String): ExpenseEntity?
+
+    @Query("UPDATE expenses SET kotor = 0 WHERE remoteId = :remoteId AND updatedAt = :updatedAt")
+    suspend fun expenseTandaiBersih(remoteId: String, updatedAt: Long): Int
+
+    @Query("DELETE FROM expenses WHERE terhapus = 1 AND kotor = 0")
+    suspend fun purgeExpenses(): Int
+
+    @Query("UPDATE expenses SET kotor = 1")
+    suspend fun expensesTandaiSemuaKotor(): Int
 
     // Backup & restore: baca semua baris sekaligus dan kosongkan tabel.
     @Query("SELECT * FROM units")
@@ -182,7 +291,7 @@ interface KasirDao {
         ReservationEntity::class,
         ExpenseEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -226,6 +335,32 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+// v5: kolom sinkron Mode Online di ketujuh tabel - remoteId (identitas
+// awan), updatedAt (cap sunting terakhir untuk adu mutakhir),
+// terhapus (hapus lunak/kuburan), kotor (menunggu naik). Baris lama
+// diberi remoteId dari id lokalnya dan updatedAt dari cap waktunya
+// sendiri bila ada (sesi/penjualan/reservasi/pengeluaran), 0 bila tidak.
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val tabel = listOf(
+            Triple("units", "unit-", "0"),
+            Triple("snacks", "snack-", "0"),
+            Triple("sessions", "sesi-", "startEpoch"),
+            Triple("session_snacks", "sesisnack-", "0"),
+            Triple("snack_sales", "jualsnack-", "epoch"),
+            Triple("reservations", "reservasi-", "startEpoch"),
+            Triple("expenses", "pengeluaran-", "epoch")
+        )
+        for ((nama, awalan, capWaktu) in tabel) {
+            db.execSQL("ALTER TABLE $nama ADD COLUMN remoteId TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE $nama ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE $nama ADD COLUMN terhapus INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE $nama ADD COLUMN kotor INTEGER NOT NULL DEFAULT 1")
+            db.execSQL("UPDATE $nama SET remoteId = '$awalan' || id, updatedAt = $capWaktu")
+        }
+    }
+}
+
 object DatabaseProvider {
     @Volatile
     private var instance: AppDatabase? = null
@@ -236,7 +371,7 @@ object DatabaseProvider {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "kasir.db"
-            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
         }
     }
 }
