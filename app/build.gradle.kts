@@ -7,6 +7,14 @@ plugins {
     id("androidx.baselineprofile")
 }
 
+// Plugin google-services hanya diterapkan bila berkas konfigurasinya
+// ada (app/google-services.json, dari Firebase Console) - tanpanya
+// aplikasi tetap ter-build persis seperti sebelumnya dan Mode Online
+// tidak aktif. Pola yang sama seperti KasBulanan dan Apotek Lestari.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // AGP 9 has built-in Kotlin support, so the org.jetbrains.kotlin.android
 // plugin is no longer applied; the JVM target moves to this block.
 kotlin {
@@ -103,4 +111,17 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // org.json asli untuk tes unit BackupHelper (di perangkat, org.json bawaan Android).
     testImplementation("org.json:json:20240303")
+
+    // Mode Online (Firebase) - pola yang sama seperti KasBulanan:
+    // autentikasi + Firestore untuk cermin awan per akun. Semua
+    // pemakaian dijaga FirebaseKit supaya aplikasi tetap jalan penuh
+    // tanpa berkas konfigurasi (mode lokal saja).
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- default_web_client_id dibaca FirebaseKit lewat Resources.getIdentifier
+     saat masuk dengan Google. Tanpa berkas keep ini, R8 shrinkResources
+     membuangnya karena tidak ada rujukan langsung dari kode, dan tombol
+     Google hilang diam-diam (pelajaran dari KasBulanan & Apotek). -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/default_web_client_id" />
