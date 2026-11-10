@@ -381,20 +381,20 @@ object DatabaseProvider {
 object SeedData {
     suspend fun ensure(dao: KasirDao) {
         if (dao.unitCount() == 0) {
-            dao.insertUnit(UnitEntity(name = "TV 01", consoleType = "PS3", hourlyRate = 5000))
-            dao.insertUnit(UnitEntity(name = "TV 02", consoleType = "PS3", hourlyRate = 5000))
-            dao.insertUnit(UnitEntity(name = "TV 03", consoleType = "PS4", hourlyRate = 8000))
-            dao.insertUnit(UnitEntity(name = "TV 04", consoleType = "PS4", hourlyRate = 8000))
-            dao.insertUnit(UnitEntity(name = "TV 05", consoleType = "PS5", hourlyRate = 10000))
-            dao.insertUnit(UnitEntity(name = "TV 06", consoleType = "PS5", hourlyRate = 10000))
+            dao.insertUnit(UnitEntity(name = "TV 01", consoleType = "PS3", hourlyRate = 5000).baruSync())
+            dao.insertUnit(UnitEntity(name = "TV 02", consoleType = "PS3", hourlyRate = 5000).baruSync())
+            dao.insertUnit(UnitEntity(name = "TV 03", consoleType = "PS4", hourlyRate = 8000).baruSync())
+            dao.insertUnit(UnitEntity(name = "TV 04", consoleType = "PS4", hourlyRate = 8000).baruSync())
+            dao.insertUnit(UnitEntity(name = "TV 05", consoleType = "PS5", hourlyRate = 10000).baruSync())
+            dao.insertUnit(UnitEntity(name = "TV 06", consoleType = "PS5", hourlyRate = 10000).baruSync())
         }
         if (dao.snackCount() == 0) {
-            dao.insertSnack(SnackEntity(name = "Indomie Goreng", price = 7000, stock = 20))
-            dao.insertSnack(SnackEntity(name = "Kopi Hitam", price = 5000, stock = 20))
-            dao.insertSnack(SnackEntity(name = "Es Teh Manis", price = 5000, stock = 20))
-            dao.insertSnack(SnackEntity(name = "Air Mineral", price = 4000, stock = 30))
-            dao.insertSnack(SnackEntity(name = "Snack Kentang", price = 6000, stock = 20))
-            dao.insertSnack(SnackEntity(name = "Gorengan", price = 5000, stock = 20))
+            dao.insertSnack(SnackEntity(name = "Indomie Goreng", price = 7000, stock = 20).baruSync())
+            dao.insertSnack(SnackEntity(name = "Kopi Hitam", price = 5000, stock = 20).baruSync())
+            dao.insertSnack(SnackEntity(name = "Es Teh Manis", price = 5000, stock = 20).baruSync())
+            dao.insertSnack(SnackEntity(name = "Air Mineral", price = 4000, stock = 30).baruSync())
+            dao.insertSnack(SnackEntity(name = "Snack Kentang", price = 6000, stock = 20).baruSync())
+            dao.insertSnack(SnackEntity(name = "Gorengan", price = 5000, stock = 20).baruSync())
         }
     }
 }

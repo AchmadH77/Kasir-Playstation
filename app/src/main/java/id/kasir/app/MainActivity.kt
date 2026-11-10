@@ -733,7 +733,7 @@ private fun UnitTab(
                                         IconButton(
                                             onClick = {
                                                 scope.launch {
-                                                    dao.deleteReservation(r)
+                                                    dao.deleteReservation(r.id, nowSync())
                                                 }
                                             },
                                             modifier = Modifier.size(28.dp)
@@ -856,7 +856,7 @@ private fun UnitTab(
                 startUnit = null
                 startPrefill = null
                 if (usedReservation != null) {
-                    scope.launch { dao.deleteReservation(usedReservation) }
+                    scope.launch { dao.deleteReservation(usedReservation.id, nowSync()) }
                 }
                 notify("Sesi dimulai di " + unit.name)
             }
@@ -1199,7 +1199,7 @@ private fun ReservationDialog(
                                         durationMinutes = duration,
                                         price = priceText.toLongOrNull() ?: 0L
                                     )
-                                )
+                                .baruSync())
                                 onSaved()
                             }
                         }
@@ -1481,7 +1481,7 @@ private fun StartSessionDialog(
                                     paketPrice = price,
                                     startEpoch = System.currentTimeMillis()
                                 )
-                            )
+                            .baruSync())
                             onStarted()
                         }
                     },
@@ -1747,11 +1747,11 @@ private fun SessionDetailDialog(
                                     IconButton(onClick = {
                                         scope.launch {
                                             if (item.qty <= 1) {
-                                                dao.deleteSessionSnack(item)
+                                                dao.deleteSessionSnack(item.id, nowSync())
                                             } else {
-                                                dao.updateSessionSnack(item.copy(qty = item.qty - 1))
+                                                dao.updateSessionSnack(item.copy(qty = item.qty - 1).sentuhSync())
                                             }
-                                            dao.increaseStock(item.snackId, 1)
+                                            dao.increaseStock(item.snackId, 1, nowSync())
                                         }
                                     }) {
                                         Icon(Icons.Default.Remove, contentDescription = null)
@@ -1761,8 +1761,8 @@ private fun SessionDetailDialog(
                                         enabled = stock > 0,
                                         onClick = {
                                             scope.launch {
-                                                dao.updateSessionSnack(item.copy(qty = item.qty + 1))
-                                                dao.decreaseStock(item.snackId, 1)
+                                                dao.updateSessionSnack(item.copy(qty = item.qty + 1).sentuhSync())
+                                                dao.decreaseStock(item.snackId, 1, nowSync())
                                             }
                                         }
                                     ) {
@@ -1824,7 +1824,7 @@ private fun SessionDetailDialog(
                                                     existing.copy(
                                                         qty = existing.qty + 1
                                                     )
-                                                )
+                                                .sentuhSync())
                                             } else {
                                                 dao.insertSessionSnack(
                                                     SessionSnackEntity(
@@ -1834,9 +1834,9 @@ private fun SessionDetailDialog(
                                                         price = snack.price,
                                                         qty = 1
                                                     )
-                                                )
+                                                .baruSync())
                                             }
-                                            dao.decreaseStock(snack.id, 1)
+                                            dao.decreaseStock(snack.id, 1, nowSync())
                                         }
                                     }
                                 ) {
@@ -1865,7 +1865,7 @@ private fun SessionDetailDialog(
                                                 pausedMillis = session.pausedMillis + extra,
                                                 pauseStartEpoch = null
                                             )
-                                        )
+                                        .sentuhSync())
                                     }
                                 },
                                 modifier = Modifier
@@ -1884,7 +1884,7 @@ private fun SessionDetailDialog(
                                                 status = STATUS_PAUSED,
                                                 pauseStartEpoch = System.currentTimeMillis()
                                             )
-                                        )
+                                        .sentuhSync())
                                     }
                                 },
                                 modifier = Modifier
@@ -1947,7 +1947,7 @@ private fun SessionDetailDialog(
                                                 paketMinutes = session.paketMinutes + addMinutes,
                                                 paketPrice = base + addPrice
                                             )
-                                        )
+                                        .sentuhSync())
                                         notify(
                                             "Waktu ditambah " + formatMinutes(addMinutes) +
                                                 " - harga paket sekarang " +
@@ -2015,9 +2015,9 @@ private fun SessionDetailDialog(
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
-                        sessionSnacks.forEach { dao.increaseStock(it.snackId, it.qty) }
-                        dao.deleteSessionSnacks(session.id)
-                        dao.deleteSession(session)
+                        sessionSnacks.forEach { dao.increaseStock(it.snackId, it.qty, nowSync()) }
+                        dao.deleteSessionSnacks(session.id, nowSync())
+                        dao.deleteSession(session.id, nowSync())
                         confirmVoid = false
                         notify("Sesi dibatalkan")
                         onDismiss()
@@ -2219,7 +2219,7 @@ private fun CheckoutDialog(
                             paidAmount = if (method == PAY_QRIS) total else paid,
                             changeAmount = if (method == PAY_QRIS) 0L else paid - total,
                         )
-                        dao.updateSession(finished)
+                        dao.updateSession(finished.sentuhSync())
                         onDone(finished)
                     }
                 }

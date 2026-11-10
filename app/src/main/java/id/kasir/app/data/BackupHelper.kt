@@ -60,13 +60,27 @@ suspend fun applyBackup(db: AppDatabase, data: BackupData) {
         dao.clearSessions()
         dao.clearSnacks()
         dao.clearUnits()
-        data.units.forEach { dao.insertUnit(it) }
-        data.snacks.forEach { dao.insertSnack(it) }
-        data.sessions.forEach { dao.insertSession(it) }
-        data.sessionSnacks.forEach { dao.insertSessionSnack(it) }
-        data.snackSales.forEach { dao.insertSnackSale(it) }
-        data.reservations.forEach { dao.insertReservation(it) }
-        data.expenses.forEach { dao.insertExpense(it) }
+        data.units.forEach {
+            dao.insertUnit(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("unit-") }, kotor = 1))
+        }
+        data.snacks.forEach {
+            dao.insertSnack(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("snack-") }, kotor = 1))
+        }
+        data.sessions.forEach {
+            dao.insertSession(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("sesi-") }, kotor = 1))
+        }
+        data.sessionSnacks.forEach {
+            dao.insertSessionSnack(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("sesisnack-") }, kotor = 1))
+        }
+        data.snackSales.forEach {
+            dao.insertSnackSale(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("jualsnack-") }, kotor = 1))
+        }
+        data.reservations.forEach {
+            dao.insertReservation(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("reservasi-") }, kotor = 1))
+        }
+        data.expenses.forEach {
+            dao.insertExpense(it.copy(remoteId = it.remoteId.ifBlank { genRemoteId("pengeluaran-") }, kotor = 1))
+        }
     }
 }
 
@@ -82,6 +96,8 @@ fun backupToJson(data: BackupData): String {
                 put("name", u.name)
                 put("consoleType", u.consoleType)
                 put("hourlyRate", u.hourlyRate)
+                put("remoteId", u.remoteId)
+                put("updatedAt", u.updatedAt)
             })
         }
     })
@@ -92,6 +108,8 @@ fun backupToJson(data: BackupData): String {
                 put("name", s.name)
                 put("price", s.price)
                 put("stock", s.stock)
+                put("remoteId", s.remoteId)
+                put("updatedAt", s.updatedAt)
             })
         }
     })
@@ -117,6 +135,8 @@ fun backupToJson(data: BackupData): String {
                 put("paymentMethod", s.paymentMethod ?: JSONObject.NULL)
                 put("paidAmount", s.paidAmount)
                 put("changeAmount", s.changeAmount)
+                put("remoteId", s.remoteId)
+                put("updatedAt", s.updatedAt)
             })
         }
     })
@@ -129,6 +149,8 @@ fun backupToJson(data: BackupData): String {
                 put("snackName", s.snackName)
                 put("price", s.price)
                 put("qty", s.qty)
+                put("remoteId", s.remoteId)
+                put("updatedAt", s.updatedAt)
             })
         }
     })
@@ -143,6 +165,8 @@ fun backupToJson(data: BackupData): String {
                 put("total", s.total)
                 put("epoch", s.epoch)
                 put("paymentMethod", s.paymentMethod)
+                put("remoteId", s.remoteId)
+                put("updatedAt", s.updatedAt)
             })
         }
     })
@@ -153,6 +177,8 @@ fun backupToJson(data: BackupData): String {
                 put("name", e.name)
                 put("amount", e.amount)
                 put("epoch", e.epoch)
+                put("remoteId", e.remoteId)
+                put("updatedAt", e.updatedAt)
             })
         }
     })
@@ -166,6 +192,8 @@ fun backupToJson(data: BackupData): String {
                 put("startEpoch", r.startEpoch)
                 put("durationMinutes", r.durationMinutes)
                 put("price", r.price)
+                put("remoteId", r.remoteId)
+                put("updatedAt", r.updatedAt)
             })
         }
     })
@@ -187,7 +215,9 @@ fun parseBackup(text: String): BackupData {
                 id = o.getLong("id"),
                 name = o.getString("name"),
                 consoleType = o.getString("consoleType"),
-                hourlyRate = o.getLong("hourlyRate")
+                hourlyRate = o.getLong("hourlyRate"),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         },
         snacks = root.getJSONArray("snacks").mapItems { o ->
@@ -195,7 +225,9 @@ fun parseBackup(text: String): BackupData {
                 id = o.getLong("id"),
                 name = o.getString("name"),
                 price = o.getLong("price"),
-                stock = o.getInt("stock")
+                stock = o.getInt("stock"),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         },
         sessions = root.getJSONArray("sessions").mapItems { o ->
@@ -218,7 +250,9 @@ fun parseBackup(text: String): BackupData {
                 total = o.getLong("total"),
                 paymentMethod = if (o.isNull("paymentMethod")) null else o.getString("paymentMethod"),
                 paidAmount = o.getLong("paidAmount"),
-                changeAmount = o.getLong("changeAmount")
+                changeAmount = o.getLong("changeAmount"),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         },
         sessionSnacks = root.getJSONArray("sessionSnacks").mapItems { o ->
@@ -228,7 +262,9 @@ fun parseBackup(text: String): BackupData {
                 snackId = o.getLong("snackId"),
                 snackName = o.getString("snackName"),
                 price = o.getLong("price"),
-                qty = o.getInt("qty")
+                qty = o.getInt("qty"),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         },
         snackSales = root.getJSONArray("snackSales").mapItems { o ->
@@ -240,7 +276,9 @@ fun parseBackup(text: String): BackupData {
                 qty = o.getInt("qty"),
                 total = o.getLong("total"),
                 epoch = o.getLong("epoch"),
-                paymentMethod = o.getString("paymentMethod")
+                paymentMethod = o.getString("paymentMethod"),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         },
         // Backup lama belum punya pengeluaran: anggap kosong juga.
@@ -249,7 +287,9 @@ fun parseBackup(text: String): BackupData {
                 id = o.getLong("id"),
                 name = o.getString("name"),
                 amount = o.getLong("amount"),
-                epoch = o.getLong("epoch")
+                epoch = o.getLong("epoch"),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         } ?: emptyList(),
         // Backup lama belum punya reservasi: anggap kosong, jangan gagal.
@@ -261,7 +301,9 @@ fun parseBackup(text: String): BackupData {
                 customerName = o.getString("customerName"),
                 startEpoch = o.getLong("startEpoch"),
                 durationMinutes = o.getInt("durationMinutes"),
-                price = o.optLong("price", 0)
+                price = o.optLong("price", 0),
+                remoteId = o.optString("remoteId", ""),
+                updatedAt = o.optLong("updatedAt", 0)
             )
         } ?: emptyList()
     )

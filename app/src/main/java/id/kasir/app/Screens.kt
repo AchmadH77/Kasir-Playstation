@@ -1242,8 +1242,8 @@ private fun BatchSellDialog(
                                     epoch = nowMs,
                                     paymentMethod = method
                                 )
-                            )
-                            dao.decreaseStock(snack.id, qty)
+                            .baruSync())
+                            dao.decreaseStock(snack.id, qty, nowSync())
                         }
                         sold = SnackSaleSnapshot(
                             items = liveItems,
@@ -1384,7 +1384,7 @@ private fun SnackFormDialog(
                         Row(modifier = Modifier.padding(top = 6.dp)) {
                             TextButton(onClick = {
                                 scope.launch {
-                                    dao.deleteSnack(initial)
+                                    dao.deleteSnack(initial.id, nowSync())
                                     notify("Menu dihapus")
                                     onDismiss()
                                 }
@@ -1414,12 +1414,12 @@ private fun SnackFormDialog(
                             if (initial == null) {
                                 dao.insertSnack(
                                     SnackEntity(name = name.trim(), price = price, stock = stock)
-                                )
+                                .baruSync())
                                 notify("Makanan ditambahkan")
                             } else {
                                 dao.updateSnack(
                                     initial.copy(name = name.trim(), price = price, stock = stock)
-                                )
+                                .sentuhSync())
                                 notify("Makanan diperbarui")
                             }
                             onDismiss()
@@ -2314,7 +2314,7 @@ private fun ExpenseFormDialog(
                                     amount = amount,
                                     epoch = epoch
                                 )
-                            )
+                            .baruSync())
                         } else {
                             dao.updateExpense(
                                 initial.copy(
@@ -2322,7 +2322,7 @@ private fun ExpenseFormDialog(
                                     amount = amount,
                                     epoch = epoch
                                 )
-                            )
+                            .sentuhSync())
                         }
                         onDismiss()
                     }
@@ -2372,7 +2372,7 @@ private fun ExpenseFormDialog(
                 TextButton(
                     onClick = {
                         scope.launch {
-                            dao.deleteExpense(initial)
+                            dao.deleteExpense(initial.id, nowSync())
                             showDeleteConfirm = false
                             onDismiss()
                         }
@@ -3128,7 +3128,7 @@ private fun UnitFormDialog(
                         Row(modifier = Modifier.padding(top = 6.dp)) {
                             TextButton(onClick = {
                                 scope.launch {
-                                    dao.deleteUnit(initial)
+                                    dao.deleteUnit(initial.id, nowSync())
                                     notify("Unit dihapus")
                                     onDismiss()
                                 }
@@ -3165,7 +3165,7 @@ private fun UnitFormDialog(
                                     consoleType = consoleType,
                                     hourlyRate = rate
                                 )
-                            )
+                            .baruSync())
                             notify("Unit ditambahkan")
                         } else {
                             dao.updateUnit(
@@ -3174,7 +3174,7 @@ private fun UnitFormDialog(
                                     consoleType = consoleType,
                                     hourlyRate = rate
                                 )
-                            )
+                            .sentuhSync())
                             notify("Unit diperbarui")
                         }
                         onDismiss()
