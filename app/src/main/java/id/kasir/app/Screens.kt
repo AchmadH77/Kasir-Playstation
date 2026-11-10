@@ -131,6 +131,11 @@ import java.util.Locale
 import androidx.core.content.FileProvider
 import java.io.File
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material3.CircularProgressIndicator
 
 // ---------- Struk ----------
 
@@ -2468,7 +2473,13 @@ fun LainnyaTab(
     dark: Boolean,
     onDarkChange: (Boolean) -> Unit,
     notify: (String) -> Unit,
-    onOpenUnitManage: () -> Unit
+    onOpenUnitManage: () -> Unit,
+    onlineSiap: Boolean,
+    emailOnline: String?,
+    statusSync: StatusSync,
+    syncTerakhir: Long,
+    onSyncTap: () -> Unit,
+    onKeluar: () -> Unit
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE) }
@@ -2572,6 +2583,92 @@ fun LainnyaTab(
             }
         }
         // LN3: empat aksi utama jadi ubin grid 2x2 agar mudah diketuk;
+        // ---- Mode Online: kartu status + baris sinkronisasi ----
+        val subStatusOnline = when {
+            emailOnline != null ->
+                emailOnline + if (syncTerakhir > 0) {
+                    "\nSinkron terakhir: " + formatDateTime(syncTerakhir)
+                } else {
+                    "\nBelum pernah sinkron"
+                }
+            !onlineSiap -> "Belum dikonfigurasi - data hanya tersimpan di HP ini"
+            else -> "Mode tamu - data hanya tersimpan di HP ini"
+        }
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (emailOnline != null) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                    contentDescription = null,
+                    tint = if (emailOnline != null) Color(0xFF43A047) else Color(0xFFE3B341),
+                    modifier = Modifier.size(28.dp)
+                )
+                Column(modifier = Modifier.padding(start = 12.dp)) {
+                    Text(
+                        if (emailOnline != null) "Mode Online" else "Mode Offline",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        subStatusOnline,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        ListItem(
+            headlineContent = { Text("Sinkronisasi") },
+            supportingContent = {
+                Text(
+                    when (statusSync) {
+                        StatusSync.PROSES -> "Sedang menyinkronkan..."
+                        StatusSync.BERHASIL -> "Tersinkron"
+                        StatusSync.GAGAL -> "Gagal - ketuk untuk mencoba lagi"
+                        StatusSync.BELUM_MASUK -> "Masuk untuk menyalakan"
+                        StatusSync.NONAKTIF -> "Belum dikonfigurasi"
+                    }
+                )
+            },
+            leadingContent = { Icon(Icons.Default.CloudSync, contentDescription = null) },
+            trailingContent = {
+                if (statusSync == StatusSync.PROSES) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                }
+            },
+            modifier = Modifier.clickable { onSyncTap() }
+        )
+        if (emailOnline != null) {
+            ListItem(
+                headlineContent = { Text("Keluar Akun") },
+                supportingContent = { Text(emailOnline) },
+                leadingContent = {
+                    Icon(
+                        Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                trailingContent = {
+                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable { onKeluar() }
+            )
+        }
         // Mode Gelap dan Tentang Kasir tetap baris di bawahnya.
         Column(
             modifier = Modifier.padding(top = 16.dp),

@@ -134,6 +134,24 @@ import id.kasir.app.data.SessionSnackEntity
 import id.kasir.app.data.UnitEntity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Canvas
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.room.InvalidationTracker
+import id.kasir.app.data.FirebaseKit
+import id.kasir.app.data.HasilSync
+import id.kasir.app.data.SyncManager
+import id.kasir.app.data.jadwalkanSyncBerkala
+import id.kasir.app.data.tandaiSemuaKotor
+import kotlinx.coroutines.Job
 
 class MainActivity : ComponentActivity() {
     // Id sesi yang diminta dibuka dari ketukan notifikasi sistem.
@@ -190,6 +208,9 @@ private fun expressiveTransform(motionScheme: MotionScheme, direction: Int): Con
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
+enum class StatusSync { NONAKTIF, BELUM_MASUK, PROSES, BERHASIL, GAGAL }
+
+@Composable
 private fun KasirApp(
     openSignal: Long? = null,
     onOpenSignalConsumed: () -> Unit = {}
@@ -232,9 +253,216 @@ private fun KasirApp(
     val notify: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
     val tabTitles = listOf("Unit", "Makanan", "Laporan", "Lainnya")
 
+    // ---- Mode Online (Firebase; diam total bila belum dikonfigurasi) ----
+    val onlineSiap = remember { FirebaseKit.siap(context) }
+    var emailOnline by remember {
+        mutableStateOf(if (onlineSiap) FirebaseKit.emailMasuk() else null)
+    }
+    var lewatiLogin by remember { mutableStateOf(false) }
+    var statusSync by remember {
+        mutableStateOf(if (onlineSiap) StatusSync.BELUM_MASUK else StatusSync.NONAKTIF)
+    }
+    var syncTerakhir by remember { mutableLongStateOf(prefs.getLong("online_sync_terakhir", 0L)) }
+    var sibukOnline by remember { mutableStateOf(false) }
+    var pesanOnline by remember { mutableStateOf<String?>(null) }
+    var tampilKonfirmasiKeluar by remember { mutableStateOf(false) }
+    var tampilInfoOnline by remember { mutableStateOf(false) }
+    val perluLogin = onlineSiap && emailOnline == null && !lewatiLogin
+
+    // senyap = sinkron latar (otomatis): tanpa snackbar. Status tetap
+    // terlihat dari ikon awan di header. Sinkron manual & saat masuk
+    // tetap memberi kabar lewat snackbar.
+    fun jalankanSync(senyap: Boolean = false) {
+        if (!onlineSiap || emailOnline == null || statusSync == StatusSync.PROSES) return
+        statusSync = StatusSync.PROSES
+        scope.launch {
+            when (val h = SyncManager(dao).sinkronSekarang(context)) {
+                is HasilSync.Berhasil -> {
+                    statusSync = StatusSync.BERHASIL
+                    syncTerakhir = System.currentTimeMillis()
+                    prefs.edit().putLong("online_sync_terakhir", syncTerakhir).apply()
+                    if (!senyap) notify("Sinkronisasi selesai")
+                }
+                is HasilSync.Gagal -> {
+                    statusSync = StatusSync.GAGAL
+                    if (!senyap) notify(h.pesan)
+                }
+                HasilSync.BelumMasuk -> statusSync = StatusSync.BELUM_MASUK
+                HasilSync.BelumDikonfigurasi -> statusSync = StatusSync.NONAKTIF
+            }
+        }
+    }
+
+    fun aksiSinkronTap() {
+        when {
+            !onlineSiap -> tampilInfoOnline = true
+            emailOnline != null -> jalankanSync()
+            else -> lewatiLogin = false
+        }
+    }
+
+    fun aksiMasukGoogle() {
+        scope.launch {
+            sibukOnline = true
+            pesanOnline = null
+            try {
+                emailOnline = FirebaseKit.masukDenganGoogle(context)
+                lewatiLogin = false
+            } catch (e: Exception) {
+                pesanOnline = e.message ?: "Gagal masuk dengan Google"
+            } finally {
+                sibukOnline = false
+            }
+        }
+    }
+
+    fun aksiMasukEmail(email: String, sandi: String) {
+        scope.launch {
+            sibukOnline = true
+            pesanOnline = null
+            try {
+                emailOnline = FirebaseKit.masukDenganEmail(email.trim(), sandi)
+                lewatiLogin = false
+            } catch (e: Exception) {
+                pesanOnline = e.message ?: "Gagal masuk"
+            } finally {
+                sibukOnline = false
+            }
+        }
+    }
+
+    fun aksiDaftarEmail(email: String, sandi: String) {
+        scope.launch {
+            sibukOnline = true
+            pesanOnline = null
+            try {
+                emailOnline = FirebaseKit.daftarDenganEmail(email.trim(), sandi)
+                lewatiLogin = false
+            } catch (e: Exception) {
+                pesanOnline = e.message ?: "Gagal mendaftar"
+            } finally {
+                sibukOnline = false
+            }
+        }
+    }
+
+    fun aksiResetSandi(email: String) {
+        scope.launch {
+            try {
+                FirebaseKit.kirimResetSandi(email.trim())
+                pesanOnline = "Email atur ulang kata sandi terkirim. Cek kotak masukmu."
+            } catch (e: Exception) {
+                pesanOnline = e.message ?: "Gagal mengirim email atur ulang"
+            }
+        }
+    }
+
+    LaunchedEffect(emailOnline) {
+        if (emailOnline != null) {
+            // Konsolidasi ganti akun: akun berbeda dari akun sinkron
+            // terakhir (atau belum pernah tercatat) -> naikkan seluruh
+            // isi lokal ke akun ini supaya data awan tidak terbelah.
+            val emailSebelumnya = prefs.getString("online_email_terakhir", null)
+            if (emailSebelumnya != emailOnline) {
+                tandaiSemuaKotor(dao)
+                prefs.edit().putString("online_email_terakhir", emailOnline).apply()
+            }
+            jadwalkanSyncBerkala(context)
+            jalankanSync()
+        } else if (onlineSiap) {
+            statusSync = StatusSync.BELUM_MASUK
+        }
+    }
+
+    // Sinkron otomatis +-5 detik setelah data berubah selagi masuk
+    // (senyap; pola yang sama seperti Apotek Lestari).
+    DisposableEffect(emailOnline) {
+        if (!onlineSiap || emailOnline == null) {
+            onDispose { }
+        } else {
+            var tunda: Job? = null
+            val pengamat = object : InvalidationTracker.Observer(
+                "units", "snacks", "sessions", "session_snacks",
+                "snack_sales", "reservations", "expenses"
+            ) {
+                override fun onInvalidated(tables: Set<String>) {
+                    tunda?.cancel()
+                    tunda = scope.launch {
+                        delay(5000)
+                        val adaKotor = dao.unitsKotor().isNotEmpty() ||
+                            dao.snacksKotor().isNotEmpty() ||
+                            dao.sessionsKotor().isNotEmpty() ||
+                            dao.sessionSnacksKotor().isNotEmpty() ||
+                            dao.snackSalesKotor().isNotEmpty() ||
+                            dao.reservationsKotor().isNotEmpty() ||
+                            dao.expensesKotor().isNotEmpty()
+                        if (adaKotor) jalankanSync(senyap = true)
+                    }
+                }
+            }
+            val tracker = DatabaseProvider.get(context).invalidationTracker
+            tracker.addObserver(pengamat)
+            onDispose {
+                tracker.removeObserver(pengamat)
+                tunda?.cancel()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) { SeedData.ensure(dao) }
 
     KasirTheme(darkTheme = dark) {
+        if (tampilKonfirmasiKeluar) {
+            AlertDialog(
+                onDismissRequest = { tampilKonfirmasiKeluar = false },
+                title = { Text("Keluar dari akun?") },
+                text = {
+                    Text(
+                        "Kamu masuk sebagai ${emailOnline ?: ""}. Data di HP ini tetap ada; " +
+                            "sinkronisasi berhenti sampai kamu masuk lagi."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        tampilKonfirmasiKeluar = false
+                        FirebaseKit.keluar()
+                        emailOnline = null
+                    }) { Text("Keluar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { tampilKonfirmasiKeluar = false }) { Text("Batal") }
+                }
+            )
+        }
+        if (tampilInfoOnline) {
+            AlertDialog(
+                onDismissRequest = { tampilInfoOnline = false },
+                title = { Text("Mode Online") },
+                text = {
+                    Text(
+                        "Mode Online menyalin data rental ke awan (Firebase) milikmu sendiri " +
+                            "sebagai cadangan dan untuk pindah HP. Fitur ini belum dikonfigurasi " +
+                            "di build ini - aplikasi berjalan lokal seperti biasa. " +
+                            "Cara menyalakannya ada di docs/ONLINE.md pada repo."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { tampilInfoOnline = false }) { Text("Mengerti") }
+                }
+            )
+        }
+        if (perluLogin) {
+            LayarLogin(
+                sibuk = sibukOnline,
+                pesanGalat = pesanOnline,
+                googleSiap = FirebaseKit.googleSiap(context),
+                onMasukGoogle = { aksiMasukGoogle() },
+                onMasukEmail = { e, s -> aksiMasukEmail(e, s) },
+                onDaftar = { e, s -> aksiDaftarEmail(e, s) },
+                onReset = { e -> aksiResetSandi(e) },
+                onLewati = { lewatiLogin = true }
+            )
+        } else {
         val motionScheme = MaterialTheme.motionScheme
         AnimatedContent(
             targetState = showUnitManage,
@@ -268,10 +496,12 @@ private fun KasirApp(
                         )
                     ) {
                         Row(
-                            modifier = Modifier.padding(
-                                horizontal = 14.dp,
-                                vertical = 12.dp
-                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 12.dp
+                                ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
@@ -293,6 +523,45 @@ private fun KasirApp(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(start = 12.dp)
                             )
+                            if (onlineSiap) {
+                                Spacer(Modifier.weight(1f))
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(
+                                            Color.White.copy(alpha = 0.18f),
+                                            CircleShape
+                                        )
+                                        .clickable { aksiSinkronTap() },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    when (statusSync) {
+                                        StatusSync.PROSES -> CircularProgressIndicator(
+                                            color = Color.White,
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        StatusSync.BERHASIL -> Icon(
+                                            Icons.Default.CloudDone,
+                                            contentDescription = "Tersinkron",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        StatusSync.GAGAL -> Icon(
+                                            Icons.Default.CloudOff,
+                                            contentDescription = "Sinkron gagal",
+                                            tint = Color(0xFFFFB4AB),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        else -> Icon(
+                                            Icons.Default.CloudSync,
+                                            contentDescription = "Sinkronisasi",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -327,7 +596,13 @@ private fun KasirApp(
                                     prefs.edit().putBoolean("dark_theme", checked).apply()
                                 },
                                 notify = notify,
-                                onOpenUnitManage = { showUnitManage = true }
+                                onOpenUnitManage = { showUnitManage = true },
+                                onlineSiap = onlineSiap,
+                                emailOnline = emailOnline,
+                                statusSync = statusSync,
+                                syncTerakhir = syncTerakhir,
+                                onSyncTap = { aksiSinkronTap() },
+                                onKeluar = { tampilKonfirmasiKeluar = true }
                             )
                         }
                     }
@@ -540,6 +815,7 @@ private fun FloatingDock(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -2229,4 +2505,231 @@ private fun CheckoutDialog(
             TextButton(onClick = onDismiss) { Text("Batal") }
         }
     )
+}
+
+/** Logo Google empat warna, digambar dengan Canvas (pola KasBulanan). */
+@Composable
+private fun LogoGoogle(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val r = size.minDimension / 2f
+        val c = Offset(size.width / 2f, size.height / 2f)
+        drawCircle(Color.White, r, c)
+        val stroke = r * 0.5f
+        val arcR = r * 0.6f
+        val kiri = Offset(c.x - arcR, c.y - arcR)
+        val uk = Size(arcR * 2f, arcR * 2f)
+        drawArc(Color(0xFF4285F4), -50f, 100f, false, kiri, uk, style = Stroke(stroke, cap = StrokeCap.Butt))
+        drawArc(Color(0xFFEA4335), -140f, 90f, false, kiri, uk, style = Stroke(stroke, cap = StrokeCap.Butt))
+        drawArc(Color(0xFFFBBC05), 130f, 80f, false, kiri, uk, style = Stroke(stroke, cap = StrokeCap.Butt))
+        drawArc(Color(0xFF34A853), 50f, 80f, false, kiri, uk, style = Stroke(stroke, cap = StrokeCap.Butt))
+        drawRect(
+            Color(0xFF4285F4),
+            topLeft = Offset(c.x - stroke * 0.2f, c.y - stroke / 2f),
+            size = Size(arcR + stroke * 0.2f, stroke)
+        )
+    }
+}
+
+/**
+ * Gerbang masuk Mode Online (pola KasBulanan): pita identitas navy
+ * seperti header aplikasi, lalu kartu masuk - tombol Google putih,
+ * pemisah, formulir email, dan Lewati untuk mode tamu (per sesi).
+ * Hanya tampil bila Firebase terkonfigurasi dan belum ada yang masuk.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LayarLogin(
+    sibuk: Boolean,
+    pesanGalat: String?,
+    googleSiap: Boolean,
+    onMasukGoogle: () -> Unit,
+    onMasukEmail: (String, String) -> Unit,
+    onDaftar: (String, String) -> Unit,
+    onReset: (String) -> Unit,
+    onLewati: () -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var sandi by remember { mutableStateOf("") }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(36.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF16324F),
+                contentColor = Color.White
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(Color.White, RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.SportsEsports,
+                        contentDescription = null,
+                        tint = Color(0xFF16324F),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Column(modifier = Modifier.padding(start = 16.dp)) {
+                    Text(
+                        "Kasir",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        "Rental PlayStation",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            )
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    "Masuk untuk menyalakan Mode Online",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Data rentalmu dicadangkan ke awan dan bisa dibuka di HP lain dengan akun yang sama.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Spacer(Modifier.height(16.dp))
+                if (googleSiap) {
+                    Button(
+                        onClick = onMasukGoogle,
+                        enabled = !sibuk,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color(0xFF16324F)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (sibuk) {
+                            CircularProgressIndicator(
+                                color = Color(0xFF16324F),
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        } else {
+                            LogoGoogle(Modifier.size(20.dp))
+                        }
+                        Text(
+                            "Masuk dengan Google",
+                            modifier = Modifier.padding(start = 10.dp)
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp)
+                    ) {
+                        HorizontalDivider(Modifier.weight(1f))
+                        Text(
+                            "atau pakai email",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        )
+                        HorizontalDivider(Modifier.weight(1f))
+                    }
+                } else {
+                    Text(
+                        "Login Google belum aktif di build ini; pakai email di bawah.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = sandi,
+                    onValueChange = { sandi = it },
+                    label = { Text("Kata sandi") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                )
+                if (pesanGalat != null) {
+                    Text(
+                        pesanGalat,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 10.dp)
+                    )
+                }
+                Button(
+                    onClick = { onMasukEmail(email, sandi) },
+                    enabled = !sibuk && email.isNotBlank() && sandi.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Text("Masuk")
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(
+                        onClick = { onDaftar(email, sandi) },
+                        enabled = !sibuk && email.isNotBlank() && sandi.isNotBlank()
+                    ) { Text("Daftar") }
+                    TextButton(
+                        onClick = { onReset(email) },
+                        enabled = !sibuk && email.isNotBlank()
+                    ) { Text("Lupa kata sandi?") }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                TextButton(
+                    onClick = onLewati,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Lewati - pakai sebagai tamu")
+                }
+                Text(
+                    "Mode tamu: semua data hanya tersimpan di HP ini.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+        }
+    }
 }
