@@ -2,7 +2,7 @@
 
 [![Build APK](https://github.com/Achmadh7/kasir/actions/workflows/build.yml/badge.svg)](https://github.com/Achmadh7/kasir/actions/workflows)
 
-A **PlayStation rental** cashier (billing) app for Android, written in Kotlin + Jetpack Compose with Material 3 Expressive. All data is stored locally on the phone (Room) — no server.
+A **PlayStation rental** cashier (billing) app for Android, written in Kotlin + Jetpack Compose with Material 3 Expressive. Data is stored locally on the phone (Room) and the app is fully usable offline; an optional **Online Mode** can mirror it to the owner's own Firebase project as a cloud backup (see [docs/ONLINE.md](docs/ONLINE.md)).
 
 See [CHANGELOG.md](CHANGELOG.md) for notable changes.
 
@@ -17,6 +17,7 @@ See [CHANGELOG.md](CHANGELOG.md) for notable changes.
 - **Payment** — Cash (amount tendered + automatic change + exact-amount and denomination shortcuts) or QRIS. Money fields format thousand separators automatically while typing.
 - **Reports** — revenue totals per period (today / this week / this month / all time), a bar chart of the last 7 days of revenue, a busiest-hours chart (revenue per hour of day for the selected period, with the peak hour called out), a single hero card holding the whole calculation (total with a comparison chip, Playstation / snacks / expense rows, and the net-profit line; layout K2), two side-by-side mini chart cards (last 7 days and busiest hours), a composition strip (Playstation vs snacks vs expenses), expense logging (a compact single-card list whose section title carries the period total; the entry form follows the selected period), and session history. The two mini chart cards are equal height.
 - **Backup & restore** — the whole database exports to a single JSON file through the share sheet, optionally protected with a password (AES-GCM encryption), and can be restored from a file picker after a summary confirmation; restoring replaces the current data atomically. Android's own app backup is disabled, so the database only leaves the phone through this export.
+- **Online Mode (optional)** — sign in with Google or email and every table (units, snacks, sessions, session snacks, snack sales, reservations, expenses) mirrors to Cloud Firestore under your own account: automatic silent sync seconds after each change plus a 6-hour background pass, last-write-wins conflicts, soft deletes, and automatic consolidation when you switch accounts. Guest mode keeps everything local. Setup and data layout: [docs/ONLINE.md](docs/ONLINE.md).
 - **Receipt** — session payment details that can be shared (as text) to other apps; the store name is configurable and appears on the receipt.
 - **Appearance** — 4 tabs (Unit, Makanan, Laporan, Lainnya) with a floating navigation dock (NB1) where only the active tab shows its label, inside a filled pill that widens to fit it, and the other tabs are icon-only, a steel-blue (W2) light/dark colour scheme, and Material 3 Expressive motion transitions between tabs. The Lainnya tab carries a slim store header with a rename shortcut and a 2x2 grid of shortcut tiles (unit management with the live unit count, backup, restore, notification test), plus dark-mode and About rows.
 
@@ -28,7 +29,7 @@ On first launch the app is seeded with sample data (6 TV units and 6 snack menu 
 |---|---|
 | Language | Kotlin 2.4.10 |
 | UI | Jetpack Compose (BOM 2026.09.00), Material3 1.5.0-beta02 (MaterialExpressiveTheme) |
-| Database | Room 2.7.2 (KSP 2.3.9), fully offline |
+| Database | Room 2.7.2 (KSP 2.3.9), offline-first (v5 adds sync fields); optional Firebase Auth + Firestore mirror |
 | Build | AGP 9.1.1, Gradle 9.3.1, JDK 17 |
 | Android | minSdk 26 (Android 8.0), targetSdk 36, compileSdk 37 |
 | Package | `id.kasir.app` |
