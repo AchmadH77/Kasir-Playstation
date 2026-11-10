@@ -101,6 +101,9 @@ interface KasirDao {
     @Insert
     suspend fun insertSnackSale(sale: SnackSaleEntity): Long
 
+    @Update
+    suspend fun updateSnackSale(sale: SnackSaleEntity)
+
     // Reservasi unit
     @Query("SELECT * FROM reservations WHERE terhapus = 0 ORDER BY startEpoch ASC")
     fun reservationsFlow(): Flow<List<ReservationEntity>>
@@ -110,6 +113,9 @@ interface KasirDao {
 
     @Insert
     suspend fun insertReservation(reservation: ReservationEntity): Long
+
+    @Update
+    suspend fun updateReservation(reservation: ReservationEntity)
 
     @Query("UPDATE reservations SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
     suspend fun deleteReservation(id: Long, now: Long)
@@ -127,6 +133,15 @@ interface KasirDao {
     @Query("UPDATE expenses SET terhapus = 1, kotor = 1, updatedAt = :now WHERE id = :id")
     suspend fun deleteExpense(id: Long, now: Long)
 
+
+    @Query("SELECT * FROM units WHERE id = :id LIMIT 1")
+    suspend fun unitByIdAny(id: Long): UnitEntity?
+
+    @Query("SELECT * FROM snacks WHERE id = :id LIMIT 1")
+    suspend fun snackByIdAny(id: Long): SnackEntity?
+
+    @Query("SELECT * FROM sessions WHERE id = :id LIMIT 1")
+    suspend fun sessionByIdAny(id: Long): SessionEntity?
 
     // ---- Permukaan sinkron (Mode Online) ----
     // Baris kotor menunggu naik; getByRemoteId mencari pasangan lokal
